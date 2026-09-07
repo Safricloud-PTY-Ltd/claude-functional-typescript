@@ -1,0 +1,30 @@
+{
+  "name": "<project-name>",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=24"
+  },
+  "imports": {
+    "#*": "./src/*/index.ts"
+  },
+  "scripts": {
+    "start": "node src/app/main.ts",
+    "typecheck": "tsgo --noEmit",
+    "typecheck:tsc": "tsc --noEmit",
+    "lint": "eslint --max-warnings 0 .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "test": "vitest run --passWithNoTests",
+    "test:watch": "vitest",
+    "coverage": "vitest run --coverage",
+    "deps": "depcruise src",
+    "deps:graph": "depcruise src --output-type dot | dot -T svg > reports/deps.svg",
+    "deadcode": "knip",
+    "check": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm test && pnpm deps && pnpm deadcode",
+    "mutation": "stryker run",
+    "build": "echo 'nothing to build: node runs src/ directly' && exit 0",
+    "e2e": "echo 'no e2e suite yet' && exit 0"
+  }
+}

@@ -1,0 +1,17 @@
+# Git hooks. `pnpm exec lefthook install` after cloning (the postinstall does it too).
+pre-commit:
+  parallel: true
+  jobs:
+    - name: format
+      glob: '*.{ts,js,cjs,json,md,yml,yaml}'
+      run: pnpm exec prettier --check {staged_files}
+    - name: lint
+      glob: '*.{ts,js}'
+      run: pnpm exec eslint --max-warnings 0 {staged_files}
+    - name: typecheck
+      run: pnpm typecheck
+
+pre-push:
+  jobs:
+    - name: check
+      run: pnpm check

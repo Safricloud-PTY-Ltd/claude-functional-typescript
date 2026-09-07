@@ -1,0 +1,55 @@
+{
+  "agent": "architect",
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "startup|clear",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "rm -rf \"${CLAUDE_PROJECT_DIR}/.claude/locks\""
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PROJECT_DIR}/.claude/hooks/guard-writes.sh",
+            "args": [],
+            "timeout": 10
+          }
+        ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "if": "Bash(git *)",
+            "command": "${CLAUDE_PROJECT_DIR}/.claude/hooks/guard-git.sh",
+            "args": [],
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PROJECT_DIR}/.claude/hooks/check-file.sh",
+            "args": [],
+            "timeout": 180,
+            "statusMessage": "typecheck · lint · related tests"
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -1,0 +1,9 @@
+# Supply-chain settings.
+# allowBuilds: pnpm refuses to run install scripts unless the package is listed here.
+#   lefthook installs the git hooks; unrs-resolver fetches the resolver's native binding.
+# minimumReleaseAge (minutes): refuse versions published less than a day ago, which is
+#   the window most npm worm-style attacks live in.
+allowBuilds:
+  lefthook: true
+  unrs-resolver: true
+minimumReleaseAge: 1440
