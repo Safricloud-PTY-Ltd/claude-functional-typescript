@@ -1,0 +1,8 @@
+node_modules/
+
+# The architect's notes about this repo. They would otherwise ship inside .claude/ to every
+# project bootstrapped from the scaffold. In a bootstrapped project this directory is
+# ordinary committed content; here it is local-only.
+.claude/agent-memory/
+.claude/locks/
+.claude/settings.local.json
