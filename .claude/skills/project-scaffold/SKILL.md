@@ -34,7 +34,9 @@ package versions (see "Versions" below); copy them as they are, then adjust with
 ## Procedure for a new repository
 
 1. Copy everything in `assets/` to the repo root, preserving paths (the `.github/`, `src/shared/`,
-   and `src/app/` directories included). Edit `package.json` `name`.
+   and `src/app/` directories included). Rename `gitignore` to `.gitignore` on the way; it ships
+   undotted because npm strips a dotted `.gitignore` out of every tarball it builds, so the
+   dotted name would never survive delivery. Edit `package.json` `name`.
 2. Install the toolchain. TypeScript is pinned to 6 because typescript-eslint's peer range excludes 7;
    `@typescript/native-preview` supplies `tsgo` for fast typechecks.
 
@@ -117,7 +119,7 @@ assets/
   .dependency-cruiser.cjs    architecture rules
   lefthook.yml               pre-commit: prettier, eslint, typecheck; pre-push: pnpm check
   stryker.config.json
-  .gitignore                 includes .claude/locks/
+  gitignore                  copied to the root as .gitignore; includes .claude/locks/
   .github/dependabot.yml     weekly, grouped
   .github/workflows/ci.yml   pnpm check + coverage on PR and main
   .github/workflows/nightly.yml  mutation testing

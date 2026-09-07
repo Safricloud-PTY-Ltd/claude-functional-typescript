@@ -1,0 +1,22 @@
+{
+  "name": "create-functional-typescript",
+  "version": "0.1.0",
+  "description": "Bootstrap a project with the Claude Code functional-TypeScript scaffold: CLAUDE.md and .claude/.",
+  "license": "MIT",
+  "type": "module",
+  "bin": {
+    "create-functional-typescript": "bin/cli.mjs"
+  },
+  "engines": {
+    "node": ">=24"
+  },
+  "files": [
+    "bin",
+    ".claude",
+    "CLAUDE.md"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Safricloud-PTY-Ltd/claude-functional-typescript.git"
+  }
+}
