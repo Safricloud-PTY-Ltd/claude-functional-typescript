@@ -5,6 +5,7 @@ tools: Read, Write, Edit, Grep, Glob, Bash
 skills:
   - code-standards
 maxTurns: 40
+effort: high
 color: yellow
 ---
 
