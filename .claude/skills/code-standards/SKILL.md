@@ -14,25 +14,30 @@ argue with it, report it to the architect if you think it's wrong.
 
 ## Layout
 
+Every directory under `src/` is a module, and a module's `index.ts` is its only door.
+Modules nest: a domain is a module that contains modules, which may contain modules, down
+to five directories below `src/` (enforced).
+
 ```
 src/
-  shared/                  primitives any domain may use: brand types, stub(), Unexpected
-    index.ts               shared's barrel; other code imports `#shared`, never a file inside
-  <domain>/                one business area: orders, billing, auth, ...
+  shared/                  module: primitives any other module may use — Brand, stub(), Unexpected
+    index.ts
+  <domain>/                module: one business area — orders, billing, auth, ...
     index.ts               the domain's public API. Re-exports only. Architect-owned.
-    types.ts               domain types, error unions, zod schemas, Deps (ports)
-    core/                  functional core — pure functions only
-      <concept>/           optional single grouping level: pricing/, validation/, ...
+    types.ts               domain types, error unions, zod schemas, ports (Deps)
+    core/                  module: the functional core — pure functions only
+      <concept>/           module: pricing/, validation/, ... nesting as deep as the concept needs
+        index.ts           what the concept exposes; hides representation and helpers
+        index.test.ts      black-box test through the barrel: what a replacement must pass
         <fn>.ts            one primary export, named after the file
-        <fn>.test.ts       its tests, colocated
-    shell/                 imperative shell — I/O behind explicit deps
-      <adapter>/           db/, http/, fs/, clock/, ...
-        <fn>.ts
-  app/                     composition root: parses env, builds deps, wires shell into core
+        <fn>.test.ts       its contract tests, colocated
+    shell/                 module: the imperative shell — I/O behind ports
+      <adapter>/           module per external thing: db/, http/, clock/, mail/
+        index.ts           exports the real adapter and its in-memory fake
+        fake.ts            the fake; same port, no I/O; used by every test that needs the port
+  app/                     composition root: parses env, builds Deps, wires shell into core
 ```
 
-- Maximum depth is five directories below `src/`. If you need a sixth, the domain is too
-  big; split it.
 - A file is named after its primary export: `lineTotal.ts` exports `lineTotal`.
   `camelCase.ts` for functions, `PascalCase.ts` never (no classes).
 - One primary export per core file. A private helper may live in the same file when the
@@ -41,19 +46,51 @@ src/
   don't create them (enforced); they report what they need.
 - Tests live beside the code they cover. Type-level tests use `<fn>.test-d.ts`.
 
+## Modules
+
+A module is a boundary with something behind it. It earns its directory by hiding one of
+three things; a directory that hides none of them is a file, not a module.
+
+- **A representation.** The module exports an opaque branded type and the functions that
+  make, read, and combine it; callers never see the shape. `Money` is a `Brand<number, 'Money'>`
+  today and could be `bigint` tomorrow without a caller changing. Transparent records are for
+  boundary DTOs and for types whose shape *is* the contract, never for a module's own data.
+- **A dependency.** Third-party packages and node builtins are imported only inside `shell/`
+  adapter modules; `core/` may import `neverthrow` and nothing else from outside `src/`
+  (enforced). Swapping drizzle, the HTTP client, or the mailer is one module's diff.
+- **A choice of implementation.** A port with a real adapter and an in-memory fake, or an
+  algorithm with a plausible alternative. The fake is mandatory for every port: writing it is
+  what proves the port doesn't leak the real implementation, and tests use it instead of mocks.
+
+The architect's test for a proposed module: *if this were swapped for another
+implementation, what would change on the other side?* If nothing, there is no boundary to
+draw.
+
+- The barrel is the contract. It is written first, as a contract like any function, and it
+  contains only re-exports (enforced). What the barrel doesn't export doesn't exist outside.
+- Ports are function types declared by the consumer, in the domain's `types.ts`, never by
+  the adapter. The adapter module exports `<name>` (real) and `fake<Name>` (fake) satisfying
+  the same type.
+- Every module has an `index.test.ts` that imports only from `./index.ts`. It is the
+  acceptance suite a replacement would have to pass, and it may not know anything the barrel
+  doesn't say.
+- Reach: from outside a module, only its `index.ts` (enforced at every depth). Inside a
+  module, files import each other relatively, and a nested module may import from its
+  ancestors' files, because it is inside them. Sibling modules reach each other only through
+  their barrels.
+
 ## Imports
 
-- Inside a domain: relative paths with the extension, `./lineTotal.ts`, `../types.ts`. The
+- Inside a module: relative paths with the extension, `./lineTotal.ts`, `../types.ts`. The
   extension is not optional: Node runs the source directly and needs it.
-- Across domains: only through the domain barrel, via the subpath alias —
-  `import { lineTotal } from '#orders'`. `#<domain>` resolves to `src/<domain>/index.ts` and to
-  nothing else, so there is no way to reach another domain's internals (enforced).
+- Into another module: its `index.ts` and nothing deeper (enforced at every depth). For a
+  top-level module use the subpath alias — `import { lineTotal } from '#orders'`;
+  `#<name>` resolves to `src/<name>/index.ts` and to nothing else.
 - `shared/` is imported as `#shared` from anywhere. `shared/` imports nothing from domains.
-- A domain never imports its own barrel (enforced); inside the domain, paths are relative.
-- `core/` never imports `shell/` or `app/`. `shell/` may import its own domain's `core/`.
-  `app/` may import anything. (enforced)
-- No barrels below the domain root. `index.ts` exists once per domain and contains only
-  `export { ... } from './...'` lines.
+- A module never imports its own barrel (enforced). Barrels import nothing from outside
+  their own directory (enforced).
+- `core/` never imports `shell/` or `app/`; `shell/` may import its domain's `core/`
+  barrel; `app/` may import anything; nothing imports `app/` (enforced).
 - `import type { ... }` for types. No default exports. No circular imports (enforced).
 
 ## Functions
@@ -174,6 +211,8 @@ export const lineTotal = (
 ## Tests
 
 - One test file per contract, colocated, `describe(fnName)` at the top level.
+- One `index.test.ts` per module, importing only from `./index.ts`, exercising the barrel as
+  a caller would. Ports are exercised through the module's fake, never a mock.
 - Tests are written from the contract, not the implementation. The test-writer reads the
   signature and JSDoc and nothing else.
 - Each `@param` edge case and each `@errors` kind gets at least one `it`. Assert on the
@@ -203,6 +242,7 @@ Before reporting a file done, check it against this list; the architect will.
 - [ ] No `let`, `class`, `enum`, `any`, `null`, `throw`, `try`, mutation, or default export.
 - [ ] No function declared by an implementor; every named function has a contract.
 - [ ] Failure paths return `Result`/`ResultAsync` with a narrow, named error type.
-- [ ] Core imports nothing from shell or app; cross-domain imports go through `@/<domain>`.
+- [ ] Core imports nothing from shell, app, or node_modules (neverthrow aside); other modules are
+      reached only through their `index.ts`; module-owned data is opaque.
 - [ ] Tests cover every `@param` edge case and every `@errors` kind; no mocks in core.
 - [ ] `tsc --noEmit`, `eslint`, and the file's tests pass; nothing outside the brief was touched.

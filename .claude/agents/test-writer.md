@@ -26,7 +26,9 @@ The `code-standards` skill is in your context; its Tests section is your ruleboo
    kind, one per guarantee in `@remarks`. Add a `fast-check` property for every invariant
    the brief or the JSDoc states. Add `<fn>.test-d.ts` with `expectTypeOf` when the signature
    is generic or conditional.
-3. Write `<fn>.test.ts` beside the contract. Build inputs with the domain's constructors
+3. Write `<fn>.test.ts` beside the contract. For a module brief, write `index.test.ts`
+   importing only from `./index.ts`; if a test would need something the barrel doesn't
+   export, that is a CLARIFY, not an internal import. Effects go through the module's fake. Build inputs with the domain's constructors
    (`toOrderId(...)`), not raw casts, except where a fixture has no constructor.
 4. Run exactly the validation command the brief names. Every test must fail with
    `NotImplemented` from the stub, not with a type error or an import error. A test file
