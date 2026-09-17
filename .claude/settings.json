@@ -1,5 +1,12 @@
 {
   "agent": "architect",
+  "model": "claude-fable-5-1",
+  "effortLevel": "medium",
+  "env": {
+    "CLAUDE_CODE_SUBAGENT_MODEL": "claude-opus-5",
+    "CLAUDE_CODE_MAX_SUBAGENT_SPAWN_DEPTH": "2",
+    "CLAUDE_CODE_MAX_CONCURRENT_SUBAGENTS": "100"
+  },
   "hooks": {
     "SessionStart": [
       {

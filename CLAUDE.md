@@ -28,8 +28,10 @@ Three agents, defined in `.claude/agents/`:
 
 - **architect** is the main session (`claude --agent architect`, the default in
   `.claude/settings.json`). It restates the ask, reviews, plans, writes every contract,
-  dispatches the other two a phase at a time, verifies, commits, opens the PR. The full
-  workflow lives in its agent file.
+  dispatches the other two a phase at a time, verifies, commits, opens the PR. When the
+  owner has a choice to make, it asks with `AskUserQuestion`, options with the
+  recommendation first, never a list to answer by typing. The full workflow lives in its
+  agent file.
 - **test-writer** writes failing tests for contracts, from the signature and JSDoc alone.
 - **implementor** writes one contract's body so its tests pass, and asks the architect
   for any named function it needs.

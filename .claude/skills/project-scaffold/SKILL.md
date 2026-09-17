@@ -24,7 +24,7 @@ package versions (see "Versions" below); copy them as they are, then adjust with
 | `type` over `interface`; `ReadonlyArray<T>`; `readonly` keyword | `@typescript-eslint/consistent-type-definitions`, `array-type`; `functional/readonly-type` |
 | JSDoc on every export, `@param`/`@returns` described, no types in JSDoc, `@errors` allowed | `eslint-plugin-jsdoc`                    |
 | Relative imports carry `.ts`; no cycles; no default exports | `eslint-plugin-import-x`                                        |
-| `core/` never imports `shell/`/`app/`; `shared/` is a leaf; cross-domain only via barrel; no own-barrel imports; barrels only re-export; no orphans; no unresolvable imports; prod never imports tests | `.dependency-cruiser.cjs` |
+| Every directory is a module entered only through its `index.ts`, at every depth ≤5; no own-barrel imports; barrels only re-export; `core/` never imports `shell/`/`app/`; `core/` imports nothing from node_modules but neverthrow; `shared/` is a leaf; nothing imports `app/`; no cycles, orphans, or unresolvable imports; prod never imports tests | `.dependency-cruiser.cjs` |
 | No unused files, exports, or dependencies                | `knip`                                                             |
 | Tests red before green, type tests, coverage thresholds  | `vitest` (`typecheck.enabled`, `coverage.thresholds`)              |
 | Tests that assert something                              | Stryker mutation score, nightly                                    |
@@ -86,6 +86,10 @@ comment saying which contribution turns it back to `error`.
   `no-unused-vars` on for real code while stubs stay clean.
 - **Unused-arg rule ignores `_`-prefixed names**, for deps a shell function receives but does not use yet.
 - **`pnpm-workspace.yaml` uses `allowBuilds`** (pnpm 11), not the older `onlyBuiltDependencies`.
+- **Module boundaries are generated per depth.** dependency-cruiser matches paths by regex and
+  can't ask the filesystem "is there an index.ts above this file", so `.dependency-cruiser.cjs`
+  generates the boundary, own-barrel, and barrel-only rules for depths 1–5. Raise `MAX_DEPTH`
+  there if the standards ever allow deeper trees.
 - **Mutation testing is nightly only.** It is too slow for the loop; its job is to catch tests
   that pass without asserting, which shows up in the report the next morning.
 
@@ -97,7 +101,8 @@ eslint-import-resolver-typescript 4.4, @ninoseki/eslint-plugin-neverthrow 0.3, v
 dependency-cruiser 18.2, knip 6.34, prettier 3.9, lefthook 2.1, pnpm 11.25, neverthrow 8.2.
 Every script in `package.json` was run green on the starter tree and on a sample domain with a
 stub contract, and the dependency-cruiser and lint rules were each shown to fire on a deliberate
-violation. Knip's config was not executed here (the validation sandbox had too little memory for
+violation (re-verified 2026-09-17 for the nested-module rules with a four-deep tree and ten
+illegal imports). Knip's config was not executed here (the validation sandbox had too little memory for
 its parser); its format is the standard one and should be confirmed with `pnpm deadcode` on first
 run. Stryker's config was written from its documented schema and is likewise unexecuted.
 
