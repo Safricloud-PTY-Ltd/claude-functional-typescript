@@ -54,7 +54,7 @@ three things; a directory that hides none of them is a file, not a module.
 - **A representation.** The module exports an opaque branded type and the functions that
   make, read, and combine it; callers never see the shape. `Money` is a `Brand<number, 'Money'>`
   today and could be `bigint` tomorrow without a caller changing. Transparent records are for
-  boundary DTOs and for types whose shape *is* the contract, never for a module's own data.
+  boundary DTOs and for types whose shape _is_ the contract, never for a module's own data.
 - **A dependency.** Third-party packages and node builtins are imported only inside `shell/`
   adapter modules; `core/` may import `neverthrow` and nothing else from outside `src/`
   (enforced). Swapping drizzle, the HTTP client, or the mailer is one module's diff.
@@ -62,8 +62,8 @@ three things; a directory that hides none of them is a file, not a module.
   algorithm with a plausible alternative. The fake is mandatory for every port: writing it is
   what proves the port doesn't leak the real implementation, and tests use it instead of mocks.
 
-The architect's test for a proposed module: *if this were swapped for another
-implementation, what would change on the other side?* If nothing, there is no boundary to
+The architect's test for a proposed module: _if this were swapped for another
+implementation, what would change on the other side?_ If nothing, there is no boundary to
 draw.
 
 - The barrel is the contract. It is written first, as a contract like any function, and it
