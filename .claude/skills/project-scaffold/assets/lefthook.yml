@@ -7,7 +7,11 @@ pre-commit:
       run: pnpm exec prettier --check {staged_files}
     - name: lint
       glob: '*.{ts,js}'
-      run: pnpm exec eslint --max-warnings 0 {staged_files}
+      # .claude/ ships the template configs in project-scaffold/assets/; ESLint would take that
+      # eslint.config.js as the nearest config for those files and fail on its imports.
+      exclude:
+        - '.claude/**'
+      run: pnpm exec eslint --max-warnings 0 --no-warn-ignored {staged_files}
     - name: typecheck
       run: pnpm typecheck
 

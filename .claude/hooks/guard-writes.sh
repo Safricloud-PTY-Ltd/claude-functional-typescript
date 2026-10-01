@@ -13,7 +13,7 @@
 set -u
 
 root="${CLAUDE_PROJECT_DIR:-$PWD}"
-fields=$(node "$root/.claude/hooks/hook-input.js" agent_id agent_type tool_input.file_path 2>/dev/null) \
+fields=$(node "$root/.claude/hooks/hook-input.cjs" agent_id agent_type tool_input.file_path 2>/dev/null) \
   || { echo "guard-writes: could not parse hook input; write blocked" >&2; exit 2; }
 { read -r agent_id; read -r agent_type; read -r path; } <<<"$fields"
 
@@ -25,6 +25,9 @@ esac
 
 deny() { printf 'guard-writes: %s\n' "$1" >&2; exit 2; }
 
+# Windows hands over backslashed paths; compare with forward slashes.
+root="${root//\\//}"
+path="${path//\\//}"
 rel="${path#"$root"/}"
 [[ "$rel" == src/* ]] || deny "$agent_type may only write under src/ (asked for $rel). Put the need in your report."
 

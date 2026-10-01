@@ -109,7 +109,12 @@ project. Two things follow from that:
   JavaScript keeps the command a single file with no build step and no dependencies.
 - **`assets/gitignore` has no dot.** npm strips `.gitignore` out of every tarball it builds,
   so a dotted name would silently never reach anyone. The `project-scaffold` skill renames it
-  on the way in.
+  on the way in, and `assets/gitattributes` beside it, which forces LF so the bash hooks
+  survive a Windows checkout with `core.autocrlf`.
+- **`.claude/hooks/hook-input.cjs` is CommonJS on purpose.** The scaffold's `package.json`
+  (and this repo's) says `"type": "module"`; as a `.js` file it would load as ESM, `require`
+  would be undefined, and every guard would fail closed, blocking all git and all sub-agent
+  writes.
 
 To test a change to the command before it is on `main`, install from the branch:
 

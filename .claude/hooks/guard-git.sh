@@ -5,7 +5,7 @@
 set -u
 
 root="${CLAUDE_PROJECT_DIR:-$PWD}"
-fields=$(node "$root/.claude/hooks/hook-input.js" agent_id tool_input.command 2>/dev/null) \
+fields=$(node "$root/.claude/hooks/hook-input.cjs" agent_id tool_input.command 2>/dev/null) \
   || { echo "guard-git: could not parse hook input; command blocked" >&2; exit 2; }
 { read -r agent_id; read -r cmd; } <<<"$fields"
 [[ -z "$agent_id" ]] && exit 0

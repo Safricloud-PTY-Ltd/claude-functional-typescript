@@ -34,9 +34,12 @@ package versions (see "Versions" below); copy them as they are, then adjust with
 ## Procedure for a new repository
 
 1. Copy everything in `assets/` to the repo root, preserving paths (the `.github/`, `src/shared/`,
-   and `src/app/` directories included). Rename `gitignore` to `.gitignore` on the way; it ships
-   undotted because npm strips a dotted `.gitignore` out of every tarball it builds, so the
-   dotted name would never survive delivery. Edit `package.json` `name`.
+   and `src/app/` directories included). Rename `gitignore` to `.gitignore` and `gitattributes` to
+   `.gitattributes` on the way; `gitignore` ships undotted because npm strips a dotted
+   `.gitignore` out of every tarball it builds, so the dotted name would never survive
+   delivery, and `gitattributes` follows suit. Edit `package.json` `name`, and set
+   `packageManager` to the pnpm you use (`pnpm pkg set packageManager=pnpm@$(pnpm --version)`);
+   CI's `pnpm/action-setup` reads it.
 2. Install the toolchain. TypeScript is pinned to 6 because typescript-eslint's peer range excludes 7;
    `@typescript/native-preview` supplies `tsgo` for fast typechecks.
 
@@ -54,7 +57,8 @@ package versions (see "Versions" below); copy them as they are, then adjust with
    ```
 
    Add `drizzle-orm drizzle-zod` and `-D drizzle-kit` when the project has a database.
-3. Run `pnpm check`. On the starter tree it passes with "no test files" and an empty domain list.
+3. Run `pnpm check` and `pnpm coverage`. On the starter tree both pass, with one test file
+   (`src/shared/errors.test.ts`) and an empty domain list.
    If a step fails here, the environment differs from the validated one; fix the environment
    before touching the configs.
 4. Fill in `CLAUDE.md`'s project paragraph and the `build`, `e2e`, and deploy commands.
@@ -125,9 +129,11 @@ assets/
   lefthook.yml               pre-commit: prettier, eslint, typecheck; pre-push: pnpm check
   stryker.config.json
   gitignore                  copied to the root as .gitignore; includes .claude/locks/
+  gitattributes              copied to the root as .gitattributes; LF everywhere, so hooks run on Windows
   .github/dependabot.yml     weekly, grouped
   .github/workflows/ci.yml   pnpm check + coverage on PR and main
   .github/workflows/nightly.yml  mutation testing
   src/shared/{index,stub,brand,errors}.ts   the primitives the standards refer to
+  src/shared/errors.test.ts  keeps coverage green on the starter tree
   src/app/main.ts            composition-root placeholder
 ```
