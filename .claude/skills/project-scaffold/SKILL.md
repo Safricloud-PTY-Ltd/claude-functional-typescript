@@ -107,9 +107,11 @@ dependency-cruiser 18.2, knip 6.34, prettier 3.9, lefthook 2.1, pnpm 11.25, neve
 Every script in `package.json` was run green on the starter tree and on a sample domain with a
 stub contract, and the dependency-cruiser and lint rules were each shown to fire on a deliberate
 violation (re-verified 2026-09-17 for the nested-module rules with a four-deep tree and ten
-illegal imports). Knip's config was not executed here (the validation sandbox had too little memory for
-its parser); its format is the standard one and should be confirmed with `pnpm deadcode` on first
-run. Stryker's config was written from its documented schema and is likewise unexecuted.
+illegal imports). Knip's config was first executed on 2026-10-01 (knip 6.39) on a freshly bootstrapped
+Windows project: `neverthrow` and `zod` are in `ignoreDependencies` because the starter tree
+installs them before any code imports them, and `dot` (Graphviz, for `deps:graph`) is in
+`ignoreBinaries`; an unused file is still reported. Stryker's config was written from its
+documented schema and is unexecuted.
 
 When a tool's major version changes, re-run every script, re-check the negative cases (a
 `let`, a nested named function, a `throw` in core, a `core/` → `shell/` import, a cross-domain
