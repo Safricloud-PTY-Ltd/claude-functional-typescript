@@ -288,6 +288,13 @@ function decide(input) {
     if (e instanceof Refused) refuse(`${e.message} in a command that mentions git: run git as a plain command so the guard can read it. ${allowedHere}`);
     throw e;
   }
+  // A push is judged against the branch and config as they are now, so nothing may run before
+  // or beside it in the same call: `git switch main && git push origin HEAD` would change the
+  // branch after the check.
+  if (manager && found.some((inv) => inv.tool === 'git' && inv.verb === 'push')
+    && tokenize(command).some((t) => t.op && t.op !== 'redirect' && t.op !== 'dup')) {
+    refuse('`git push` runs alone in its own call, with nothing chained before or after it (&&, ;, |, a newline), so the guard checks the branch the push will actually use.');
+  }
   for (const inv of found) {
     if (inv.tool === 'gh') {
       if (manager || ghReadOnly(inv)) continue;

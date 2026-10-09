@@ -119,7 +119,8 @@ Don't guess.
   `git push [-u] [--force-with-lease] origin <branch>`, from the checked-out effort branch
   (`feat|fix|chore/<id>`), naming that branch (or `HEAD`). The other options it accepts are
   `-q`, `-v`, `-n`, `--porcelain`, `--force-if-includes` and `-o`, each spelled out on its
-  own. No global options or environment variables go in front, and no push goes out while
+  own. The push runs alone in its own Bash call, with nothing chained before or after it.
+  No global options or environment variables go in front, and no push goes out while
   `remote.<name>.push` is configured. Everything else is refused: other branches, other
   refspec forms, deletes, `--repo`, `--tags`, `--no-verify`. Don't look for a way around
   it, because the main session would have to authorise any exception, and it won't.
