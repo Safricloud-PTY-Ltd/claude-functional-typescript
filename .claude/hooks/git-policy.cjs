@@ -232,8 +232,11 @@ function decide(input) {
   const agentId = input.agent_id;
   if (!agentId) return;
   const command = input.tool_input?.command ?? '';
-  if (!/\b(git|gh)\b/.test(command)) return;
   const agentType = input.agent_type ?? '';
+  if (/request-review\.sh/.test(command) && agentType !== 'git-manager') {
+    refuse('requesting a review round posts to GitHub, so it is the git manager\'s job. Ask the orchestrator in a report.');
+  }
+  if (!/\b(git|gh)\b/.test(command)) return;
   const root = process.env.CLAUDE_PROJECT_DIR || input.cwd || process.cwd();
   const cwd = input.cwd || root;
   const architect = agentType === 'architect';

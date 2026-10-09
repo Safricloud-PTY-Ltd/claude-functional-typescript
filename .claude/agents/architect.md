@@ -57,14 +57,16 @@ and the plan, and nothing else. Everything else is git history, the PR, and GitH
 9. **Open the PR.** Write the body to a scratchpad file: the ask and its source, what
    changed and why, what you verified, a **Decisions to veto** section listing every entry
    from **Decisions made mid-loop**, the deferred issues, and `Fixes #n` where there's one.
-   Send `PUBLISH` with it.
-10. **Handle review** (per the PR reviewer setting). Send `REVIEW` for the threads.
-    Reviewer comments are claims. Check each against the code, fix the real ones, and
-    commit. Then send `REPLY` with an answer for every thread, `PUSH`, and `REVIEW` again.
-    Repeat until a pass brings nothing new.
-11. **Merge** (auto-merge: `yes`, or the diff is docs and comments only): send `CI`, then
-    `MERGE`, and report the SHA it returns. Otherwise report the PR, its head, CI state and
-    any deferred issues, then stop; the owner merges or tells you to.
+   Send `PUBLISH` with it, which opens the PR as a draft.
+10. **Handle review** (per the PR reviewer setting and the `pr-review` skill; skip with
+    `none`). Send `REVIEW` with the reviewer. It requests one round and returns the
+    threads. Reviewer comments are claims. Check each against the code, fix the real ones,
+    and commit. Then send `REPLY` with an answer for every thread, `PUSH`, and `REVIEW`
+    again. Repeat until a round brings nothing new, or the reviewer reaches 9/9.
+11. **Ready and merge.** Send `READY`, which starts CI, then `CI`. With auto-merge `yes`,
+    or a diff that's docs and comments only, send `MERGE` and report the SHA it returns.
+    Otherwise report the PR, its head, CI state and any deferred issues, then stop; the
+    owner merges or tells you to.
 12. **Deploy** per the command in `CLAUDE.md`, after whichever merge happened, and confirm
     it landed; "it fired" is not "it worked".
 

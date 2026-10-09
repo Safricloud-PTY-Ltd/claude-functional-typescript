@@ -3,7 +3,7 @@
 A scaffold for building functional TypeScript with Claude Code, delivered by one command.
 
 It is not a library and not an application. It is the harness — five agents, a set of write
-and git guards, and two skills — that turns Claude Code into a team that writes contracts first,
+and git guards, and three skills — that turns Claude Code into a team that writes contracts first,
 tests second, and implementations last, in a codebase where failures are values and I/O is
 kept at the edge.
 
@@ -44,6 +44,7 @@ CLAUDE.md                     your project's instructions to Claude — fill in 
   skills/
     code-standards/           the rulebook: how every function, type, and test is written
     project-scaffold/         the toolchain, plus the configs it installs, in assets/
+    pr-review/                Codex or Claude pull-request review on request, and the script that asks
 ```
 
 Nothing else is copied. The scaffold's own working files — this README, `bin/`,
@@ -81,6 +82,11 @@ and confirmed red before any implementation starts, so a passing test is evidenc
 Each piece of work gets an id (`<yyyy-mm-dd>-<slug>`) that names its branch and its directory
 under `contributions/`, holding a review for you to read and a plan with the call graph and
 the phases.
+
+Pull requests open as drafts. With the **PR reviewer** setting at `codex` or `claude`, the git
+manager requests a review round from that model when the PR opens and after every push, up to
+9 rounds, and the reviewer posts its findings to the PR itself. When a round brings nothing
+new, the PR is marked ready, and CI runs once.
 
 ### The guards
 

@@ -8,8 +8,14 @@ drizzle), and the default branch.>
 - **Auto-merge:** `yes` | `no` — `yes`: the architect merges its own PR once CI is green
   and the review loop, if any, is silent. `no`: it reports and stops; the owner merges or
   says merge. A PR whose diff is documentation or comments only merges either way.
-- **PR reviewer:** `copilot` | `none` — `copilot`: wait for its comments and work them to
-  silence before merging. `none`: no review step; go straight from PR to merge.
+- **PR reviewer:** `codex` | `claude` | `none` — `codex` or `claude`: requested when the PR
+  is opened and after every push that changes it, at most 9 times per reviewer per PR, and
+  posts its own review. Work every review to silence before merging. How to request one,
+  how the reviewer does one, and how to answer it: the `pr-review` skill. `none`: no review
+  step; go straight from PR to CI to merge.
+
+PRs open as drafts and stay drafts until the review loop is done; CI skips drafts, so it
+runs once, when the PR is marked ready.
 
 With auto-merge on and no reviewer, the loop runs from the ask to the deploy with one stop:
 the questions.

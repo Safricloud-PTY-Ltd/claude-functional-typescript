@@ -87,19 +87,24 @@ subfolder per workstream, `<id>/<workstream>/`, with that architect's `review.md
 9. **Open the PR.** Write the body to `<scratchpad>/orchestrator/pr-body.md`: the ask and
    its source, a section per workstream (what changed and why, what was verified),
    **Decisions to veto** (your mid-loop decisions and every architect's), deferred issues,
-   and `Fixes #n` where there's one. Then send `PUBLISH`.
-10. **Handle review** (per the PR reviewer setting). Send `REVIEW` and read the threads it
-   returns. Reviewer comments are claims. For a comment on a reserve file, you check it
-   and fix it or explain why not. For a comment on a territory file, resume that territory's
-   architect with it, per **Review comments** below. When every architect you resumed is
-   back to DONE, send `REPLY` with an answer for each thread, then `PUSH`, then `REVIEW`
-   again. Repeat until a pass brings nothing new.
-11. **Merge, deploy.** Send `CI`, then `MERGE` when the auto-merge setting allows it, or
-   when the diff is docs and comments only. Otherwise report the PR, its head, CI state and
-   any deferred issues, and stop. After the merge, run `rm -rf .claude/territories
-   .claude/locks`, clear the scratchpad, and deploy per `CLAUDE.md`. Confirm the deploy
-   landed. If the deploy is itself a git or GitHub action (a tag, a workflow dispatch), it's
-   a git manager job.
+   and `Fixes #n` where there's one. Then send `PUBLISH`, which opens the PR as a draft.
+10. **Handle review** (per the PR reviewer setting and the `pr-review` skill; skip with
+   `none`). Send `REVIEW` with the reviewer, and `worktree: yes` while any architect is
+   still writing. It requests one round and returns the threads. Reviewer comments are
+   claims. For a comment on a reserve file, you check it and fix it or explain why not. For
+   a comment on a territory file, resume that territory's architect with it, per **Review
+   comments** below. When every architect you resumed is back to DONE, send `REPLY` with an
+   answer for each thread, then `PUSH`, then `REVIEW` again. Each round reads the replies,
+   so aim each one at what the last skipped. Repeat until a round brings nothing new, or
+   the reviewer reaches 9/9, in which case list what's still open in a PR comment, with
+   what you decided about each.
+11. **Ready, CI, merge, deploy.** Send `READY`, which takes the PR out of draft and starts
+   CI, then `CI`. If a red run needs a change, send `UNREADY`, fix it, and run another
+   review round. Send `MERGE` when the auto-merge setting allows it, or when the diff is
+   docs and comments only. Otherwise report the PR, its head, CI state and any deferred
+   issues, and stop. After the merge, run `rm -rf .claude/territories .claude/locks`, clear
+   the scratchpad, and deploy per `CLAUDE.md`. Confirm the deploy landed. If the deploy is
+   itself a git or GitHub action (a tag, a workflow dispatch), it's a git manager job.
 
 **Nothing is deferred except what the owner must personally do**, as in the architect's
 workflow. Each such item gets a `blocked-on-owner` issue (an `ISSUE` job) before the
