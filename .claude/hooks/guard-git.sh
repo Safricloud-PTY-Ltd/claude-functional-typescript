@@ -1,18 +1,15 @@
 #!/usr/bin/env bash
-# PreToolUse hook on Bash, filtered to `git *` by the `if` rule in settings.json.
-# Sub-agents edit; the architect commits. State-changing git is blocked for any
-# sub-agent; the main session is untouched. Fails closed on unparseable input.
+# PreToolUse hook on every Bash command (git and gh can hide behind cd, a pipe or a wrapper, so
+# there is no `if` filter). The policy lives in git-policy.cjs: the main session is untouched,
+# the git manager runs git and gh with one fence around main, an architect also gets `add` and
+# `commit` on files in its own territory, and every other sub-agent gets read-only git and gh.
+# This wrapper fails closed: anything but a clean allow or a reasoned block is a block.
 set -u
 
 root="${CLAUDE_PROJECT_DIR:-$PWD}"
-fields=$(node "$root/.claude/hooks/hook-input.js" agent_id tool_input.command 2>/dev/null) \
-  || { echo "guard-git: could not parse hook input; command blocked" >&2; exit 2; }
-{ read -r agent_id; read -r cmd; } <<<"$fields"
-[[ -z "$agent_id" ]] && exit 0
-
-mutating='add|am|apply|branch|checkout|cherry-pick|clean|commit|fetch|merge|mv|pull|push|rebase|reset|restore|revert|rm|stash|switch|tag|worktree'
-if grep -Eq "(^|[^[:alnum:]_./-])git[[:space:]]+(-C[[:space:]]+[^[:space:]]+[[:space:]]+)?($mutating)([[:space:]]|$)" <<<"$cmd"; then
-  echo "guard-git: sub-agents edit; the architect commits. Read-only git (status, diff, log, show, grep, blame) is fine. Put what you changed in your report." >&2
-  exit 2
-fi
-exit 0
+node "$root/.claude/hooks/git-policy.cjs"
+status=$?
+case "$status" in
+  0|2) exit "$status" ;;
+  *)   echo "guard-git: the git policy failed to run (exit $status); command blocked" >&2; exit 2 ;;
+esac

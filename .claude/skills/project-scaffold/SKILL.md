@@ -59,7 +59,7 @@ package versions (see "Versions" below); copy them as they are, then adjust with
    before touching the configs.
 4. Fill in `CLAUDE.md`'s project paragraph and the `build`, `e2e`, and deploy commands.
    `build` and `e2e` ship as no-op placeholders; replace them when the project has something to build or run end to end.
-5. Commit. The first contribution can now start with `claude --agent architect`.
+5. Commit. The first effort can now start with `claude` (the orchestrator), or `claude --agent architect` for a solo architect.
 
 ## Procedure for an existing repository
 
@@ -122,9 +122,9 @@ assets/
   vitest.config.ts           typecheck on, v8 coverage with thresholds
   knip.json
   .dependency-cruiser.cjs    architecture rules
-  lefthook.yml               pre-commit: prettier, eslint, typecheck; pre-push: pnpm check
+  lefthook.yml               pre-commit: prettier, eslint, typecheck (skipped while territories are live); pre-push: pnpm check
   stryker.config.json
-  gitignore                  copied to the root as .gitignore; includes .claude/locks/
+  gitignore                  copied to the root as .gitignore; includes .claude/locks/ and .claude/territories/
   .github/dependabot.yml     weekly, grouped
   .github/workflows/ci.yml   pnpm check + coverage on PR and main
   .github/workflows/nightly.yml  mutation testing

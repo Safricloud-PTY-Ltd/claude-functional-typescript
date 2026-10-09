@@ -8,8 +8,11 @@ pre-commit:
     - name: lint
       glob: '*.{ts,js}'
       run: pnpm exec eslint --max-warnings 0 {staged_files}
+    # Whole-project, so it is skipped while the orchestrator has territories live: parallel
+    # architects' half-written files would fail each other's commits. They typecheck their
+    # own paths, and pre-push runs the full check.
     - name: typecheck
-      run: pnpm typecheck
+      run: if ls .claude/territories/* >/dev/null 2>&1; then echo "typecheck skipped while territories are live; pre-push runs pnpm check"; else pnpm typecheck; fi
 
 pre-push:
   jobs:

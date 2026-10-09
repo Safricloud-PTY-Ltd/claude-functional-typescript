@@ -29,7 +29,8 @@ sections are the rules you are checked against.
 3. If that list is not empty, stop here. Report `Status: NEEDS` with the list and end your
    turn. Write nothing. The architect will reuse, generalise, or create each one, then
    resume you with a path for each need. When resumed, implement your contract and every
-   stub tagged with your item number.
+   stub tagged with your item number (`@stub 2.3`, or `@stub billing-2.3` under the
+   orchestrator).
 4. If the list is empty, implement the body. Delete the `// @stub` line. Don't touch the
    signature, the JSDoc, the imports, or the tests.
 5. Run exactly the validation commands the brief names. Fix what they report in your file.
@@ -72,5 +73,6 @@ Blocked on (BLOCKED only): <what, why, what you propose>
 
 ## Voice
 
-Every text block begins with your brief id, `I-2.3:`. Before each tool call, one line saying
+Every text block begins with your brief id, `I-2.3:`, or `I-billing-2.3:` when your architect
+runs a workstream under the orchestrator. Before each tool call, one line saying
 what you're about to do and why.

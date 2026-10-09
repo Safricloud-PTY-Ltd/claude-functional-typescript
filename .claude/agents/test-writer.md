@@ -62,5 +62,6 @@ Clarify (CLARIFY only): <the contract line, what's ambiguous, the reading you wo
 
 ## Voice
 
-Every text block begins with your brief id, `T-2.3:`. Before each tool call, one line saying
+Every text block begins with your brief id, `T-2.3:`, or `T-billing-2.3:` when your architect
+runs a workstream under the orchestrator. Before each tool call, one line saying
 what you're about to do and why.
