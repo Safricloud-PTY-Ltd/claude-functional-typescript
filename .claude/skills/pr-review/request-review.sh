@@ -35,6 +35,9 @@ head=$(gh pr view "$N" --json headRefOid -q .headRefOid) || fail "could not read
 
 dir="$root"
 if [[ -n "$wt" ]]; then
+  # Absolute from the start: git -C and the cd below would read a relative path differently,
+  # and the cleanup must name the same directory after the cd into it.
+  case "$wt" in /*|[A-Za-z]:*) ;; *) wt="$(pwd -P)/$wt" ;; esac
   [[ -e "$wt" ]] && fail "$wt already exists; give a fresh scratch path"
   git -C "$root" fetch -q origin "$head" 2>/dev/null || true
   git -C "$root" worktree add -q --detach "$wt" "$head" || fail "could not add a worktree at $wt"

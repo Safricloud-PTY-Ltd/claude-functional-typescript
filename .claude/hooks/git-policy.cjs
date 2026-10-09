@@ -32,6 +32,10 @@ const WRAPPERS = new Set(['sh', 'bash', 'zsh', 'dash', 'eval', 'exec', 'xargs', 
 // only read.
 const GH_READ = new Set(['view', 'list', 'status', 'diff', 'checks', 'watch']);
 const GH_READ_GROUPS = new Set(['search', 'help', 'version', '--version', '--help', '-h']);
+// git's global options whose value can come as the next word; without this, `git --work-tree .
+// push` would read `.` as the verb.
+const GLOBAL_WITH_VALUE = new Set(['-c', '--git-dir', '--work-tree', '--namespace', '--config-env',
+  '--super-prefix', '--attr-source', '--list-cmds']);
 // A push destination naming the default branch, which changes only by merging the PR.
 const PROTECTED = /^\+?(?:[^:]*:)?(?:refs\/heads\/)?(main|master)$/;
 
@@ -127,7 +131,7 @@ function invocations(command, cwd) {
     while (j < seg.length && seg[j].word.startsWith('-')) {
       if (seg[j].word === '-C') { at = path.resolve(fromShell(at), fromShell(seg[j + 1]?.word ?? '.')); j += 2; continue; }
       globals.push(seg[j].word); j += 1;
-      if (seg[j - 1].word === '-c') { globals.push(seg[j]?.word ?? ''); j += 1; }
+      if (GLOBAL_WITH_VALUE.has(seg[j - 1].word)) { globals.push(seg[j]?.word ?? ''); j += 1; }
     }
     found.push({ tool: 'git', dir: at, globals, verb: seg[j]?.word ?? '', args: seg.slice(j + 1).map((t) => t.word), assigned });
   }
@@ -215,7 +219,9 @@ function checkPush(inv) {
   if (forced.length) refuse(`\`git push ${forced.join(' ')}\`: use --force-with-lease, which refuses to overwrite commits you have not seen.`);
   const wide = options.filter((o) => ['--all', '--mirror', '--branches', '--tags', '--delete', '-d', '--prune'].includes(o));
   if (wide.length) refuse(`\`git push ${wide.join(' ')}\` reaches past the effort's branch. Push the branch by name.`);
-  const refspecs = paths.slice(1);
+  // With --repo the remote is an option, so every positional is a refspec.
+  const remoteAsOption = options.some((o) => o === '--repo' || o.startsWith('--repo='));
+  const refspecs = remoteAsOption ? paths : paths.slice(1);
   if (refspecs.length === 0 || refspecs.some((r) => r.replace(/^\+/, '') === 'HEAD')) {
     // `git push`, `git push origin` and `git push origin HEAD` push the current branch;
     // refuse them on main.
