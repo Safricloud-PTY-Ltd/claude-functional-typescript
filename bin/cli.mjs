@@ -114,7 +114,7 @@ const formatReport = (plan, target) => {
   const created = plan.filter((action) => action.kind === 'create').length;
   const skipped = plan.length - created;
   const kept = skipped === 0 ? '' : `\n  kept ${skipped} existing file(s); --force overwrites`;
-  return `\n  wrote ${created} file(s) to ${target}${kept}\n\nNext:\n  claude --agent architect\n`;
+  return `\n  wrote ${created} file(s) to ${target}${kept}\n\nNext:\n  claude    (the orchestrator; claude --agent architect for a solo architect)\n`;
 };
 
 /**
