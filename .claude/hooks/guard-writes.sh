@@ -12,8 +12,11 @@
 #                               architect releases its own locks before each phase,
 #                               SessionStart clears them all)
 #
-# The git manager has no Edit or Write tool; Explore and other sub-agents follow the normal
-# permission flow. Territories, and the canonical repo-relative path (.. and symlinks
+#   git-manager                 nothing: it changes files only through git. Its session can
+#                               still list Edit and Write (they appeared once the type
+#                               loaded, though its file grants neither), so it's refused here
+#
+# Explore and other sub-agents follow the normal permission flow. Territories, and the canonical repo-relative path (.. and symlinks
 # resolved), come from territory.cjs, which the git guard shares.
 #
 # Exit 2 blocks the write and hands the message to the agent as the reason.
@@ -32,6 +35,10 @@ fields=$(node "$root/.claude/hooks/hook-input.cjs" agent_id agent_type tool_inpu
 { read -r agent_id; read -r agent_type; read -r path; } <<<"$fields"
 
 [[ -z "$agent_id" || -z "$path" ]] && exit 0
+if [[ "$agent_type" == git-manager ]]; then
+  echo "guard-writes: the git manager edits no files (asked for $path). Content changes belong to the main session or an architect; report what you need." >&2
+  exit 2
+fi
 case "$agent_type" in
   architect|implementor|test-writer) ;;
   *) exit 0 ;;

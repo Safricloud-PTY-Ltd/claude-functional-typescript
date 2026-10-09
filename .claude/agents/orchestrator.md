@@ -319,7 +319,7 @@ answer it yourself unless it's plainly about the split, which is yours.
 Your memory directory holds what the next effort needs about orchestration: splits that
 worked, territory lines that leaked, waves that could have overlapped. Architects and the
 git manager can't write their own memory under you. Architects' memory is outside their
-territories, and the git manager has no Write tool. They put what they learned in their
+territories, and the write guard refuses every git manager write. They put what they learned in their
 reports, and after the review loop you write it to `.claude/agent-memory/architect/` or
 `.claude/agent-memory/git-manager/`, where the next one will read it. No memory directory
 ever holds status, open work or decisions.
