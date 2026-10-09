@@ -185,7 +185,8 @@ export const lineTotal = (
 - `@remarks` carries anything the implementor must know that the types don't say: purity,
   complexity, rounding, ordering guarantees.
 - `// @stub <phase>.<item>` is the first line of the body and names the brief that will
-  implement it. `stub()` throws `NotImplemented`; that is the only way a stub may fail. The
+  implement it. Under the orchestrator the marker carries the workstream too,
+  `// @stub billing-2.3`, so parallel architects' items can't be confused. `stub()` throws `NotImplemented`; that is the only way a stub may fail. The
   contract's parameters are passed through so the unused-variable rule stays on for real code.
   The implementor deletes the marker line and the `stub` import when it implements the body.
   The marker is how hooks recognise a file that is open for implementation (enforced).

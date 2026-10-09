@@ -2,8 +2,8 @@
 
 A scaffold for building functional TypeScript with Claude Code, delivered by one command.
 
-It is not a library and not an application. It is the harness — three agents, a set of write
-guards, and two skills — that turns Claude Code into a team that writes contracts first,
+It is not a library and not an application. It is the harness — five agents, a set of write
+and git guards, and two skills — that turns Claude Code into a team that writes contracts first,
 tests second, and implementations last, in a codebase where failures are values and I/O is
 kept at the edge.
 
@@ -13,7 +13,7 @@ In a new or existing project directory:
 
 ```bash
 npx github:Safricloud-PTY-Ltd/claude-functional-typescript
-claude --agent architect
+claude
 ```
 
 That is the whole install. It writes `CLAUDE.md` and `.claude/` and touches nothing else.
@@ -38,9 +38,9 @@ few seconds.
 ```
 CLAUDE.md                     your project's instructions to Claude — fill in the placeholders
 .claude/
-  settings.json               registers the hooks and makes architect the default agent
-  agents/                     architect, test-writer, implementor
-  hooks/                      write guard, git guard, post-edit typecheck/lint/test
+  settings.json               registers the hooks and makes orchestrator the default agent
+  agents/                     orchestrator, git-manager, architect, test-writer, implementor
+  hooks/                      write guard, git and gh guard, territories, post-edit typecheck/lint/test
   skills/
     code-standards/           the rulebook: how every function, type, and test is written
     project-scaffold/         the toolchain, plus the configs it installs, in assets/
@@ -51,13 +51,22 @@ Nothing else is copied. The scaffold's own working files — this README, `bin/`
 
 ## How the workflow works
 
-Three agents, defined in [.claude/agents/](.claude/agents/), with a deliberate split: one
-decides, two write.
+Five agents, defined in [.claude/agents/](.claude/agents/), with a deliberate split: one
+coordinates, one keeps git, one designs per workstream, two write.
 
-- **architect** is the session you talk to. It restates the ask, reads the code, writes a
-  review and a plan, and writes a **contract** — a signature, its JSDoc, and a stub body —
+- **orchestrator** is the session you talk to. It splits the ask into workstreams, gives
+  each a **territory** — a set of files no other agent may write — and runs one architect
+  per workstream, many at once, in one checkout on one branch. It keeps the shared files,
+  brings you every architect's questions in one round, and routes the rare request that
+  crosses territories.
+- **git-manager** does all the git and GitHub work except architects' own commits: the
+  branch, the archive, push, the PR, review threads, CI and the merge. One per effort,
+  long-lived, reporting what git actually printed.
+- **architect** owns one workstream. It restates its part of the ask, reads the code, writes
+  a review and a plan, and writes a **contract** — a signature, its JSDoc, and a stub body —
   for every function before any of them exist. It dispatches the other two, verifies what
-  comes back, and commits. It never writes a function body.
+  comes back, and commits its own files. It never writes a function body. For a small ask,
+  `claude --agent architect` runs one solo.
 - **test-writer** turns a contract into failing tests, working from the signature and JSDoc
   alone. If it cannot derive a test, that is a gap in the contract, and it says so rather
   than guessing.
@@ -75,9 +84,11 @@ the phases.
 
 ### The guards
 
-Hooks in [.claude/hooks/](.claude/hooks/) enforce what prose cannot. They give each file at
-most one owner per phase, block state-changing git for sub-agents, and run typecheck, lint,
-and the file's related tests after every single edit. An agent that strays gets stopped by
+Hooks in [.claude/hooks/](.claude/hooks/) enforce what prose cannot. They keep each architect
+and its sub-agents inside their territory, give each file at most one owner per phase, let
+architects commit only their own files, leave the rest of git and gh to the git manager (which
+can never push to `main`), and run typecheck, lint, and the file's related tests after every
+single edit. An agent that strays gets stopped by
 the harness rather than caught in review.
 
 ## The standards

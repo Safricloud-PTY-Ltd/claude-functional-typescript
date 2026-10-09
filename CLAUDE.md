@@ -24,27 +24,38 @@ the questions.
 
 ## Who does what
 
-Three agents, defined in `.claude/agents/`:
+Five agents, defined in `.claude/agents/`:
 
-- **architect** is the main session (`claude --agent architect`, the default in
-  `.claude/settings.json`). It restates the ask, reviews, plans, writes every contract,
-  dispatches the other two a phase at a time, verifies, commits, opens the PR. When the
-  owner has a choice to make, it asks with `AskUserQuestion`, options with the
-  recommendation first, never a list to answer by typing. The full workflow lives in its
-  agent file.
+- **orchestrator** is the main session (`claude`, the default in `.claude/settings.json`).
+  It splits the ask into workstreams, gives each a territory (files no other agent writes),
+  spawns one architect per workstream in waves, keeps the shared files, asks the owner each
+  wave's questions in one round, routes cross-territory requests, and runs the full check.
+  When the owner has a choice to make, it asks with `AskUserQuestion`, options with the
+  recommendation first, never a list to answer by typing.
+- **git-manager** does every state-changing git and GitHub operation except architects'
+  own commits: the branch, the main session's commits, the archive, push, the PR, review
+  threads, CI, merge, issues. The main session spawns one per effort and sends it jobs.
+- **architect** owns the shape of the code in its workstream: it restates the ask,
+  reviews, plans, writes every contract, dispatches the other two a phase at a time,
+  verifies, and commits its own files. `claude --agent architect` runs one solo as the main
+  session, taking the work through to the merge with a git manager.
 - **test-writer** writes failing tests for contracts, from the signature and JSDoc alone.
 - **implementor** writes one contract's body so its tests pass, and asks the architect
   for any named function it needs.
 
-Everyone works in this checkout on the contribution branch; there are no worktrees.
-Parallel agents never share a file. Sub-agents edit; the architect commits. Hooks in
-`.claude/hooks/` enforce who may write which files, block state-changing git for
-sub-agents, and run typecheck, lint, and the related tests after every edit.
+Each agent's full workflow lives in its agent file. Everyone works in this checkout on the
+effort's branch; there are no worktrees. Parallel agents never share a file. Sub-agents
+edit; architects commit their own files; the git manager does the rest of git. Hooks in
+`.claude/hooks/` enforce who may write which files (territories included), limit each
+sub-agent's git and gh to what its role allows, and run typecheck, lint, and the related
+tests after every edit.
 
 ## Voice
 
-Every text block begins with the writer's name: `Architect:`, or for a sub-agent the brief
-it holds — `T-2.3:` or `I-2.3:` for item 3 of phase 2. Before each tool call, one prefixed
+Every text block begins with the writer's name: `Orchestrator:`, `Git manager:`,
+`Architect:` (or `Architect billing:` for a workstream), or for a sub-agent the brief it
+holds — `T-2.3:` or `I-2.3:` for item 3 of phase 2, `T-billing-2.3:` under the
+orchestrator. Before each tool call, one prefixed
 line saying what you're about to do and why — "Architect: reading the drift gate in
 `ci.yml` to see which paths it inspects." Not what you did; the result says that. The owner
 should be able to follow a transcript with five agents in it and never wonder why a command
