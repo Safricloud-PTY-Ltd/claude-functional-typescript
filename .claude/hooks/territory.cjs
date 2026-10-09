@@ -87,7 +87,7 @@ function refusal(territories, agentType, agentId, rel) {
 
 module.exports = { fromShell, repoRelative, load, holders, refusal };
 
-// CLI for guard-writes.sh: node territory.js <agent_id> <agent_type> <path>
+// CLI for guard-writes.sh: node territory.cjs <agent_id> <agent_type> <path>
 // Prints the canonical repo-relative path (empty outside the repo), then `ok` or the refusal.
 if (require.main === module) {
   const [agentId, agentType, file] = process.argv.slice(2);
