@@ -85,9 +85,10 @@ Don't guess.
 - **REPLY** `replies:` (thread id, then the reply text or a file with it) and
   `resolve: <thread ids>`. Post each reply in its thread, resolve the threads named, then
   report which posted.
-- **PUSH**. Run `git push` on the effort's branch. If the history was rewritten on
-  purpose, the job says `lease: yes`, and you run `git push --force-with-lease`. Report the
-  new head.
+- **PUSH**. Run `git push origin <branch>`, naming both, because the guard refuses a push
+  that leaves the destination to git config. If the history was rewritten on purpose, the
+  job says `lease: yes`, and you run `git push --force-with-lease origin <branch>`. Report
+  the new head.
 - **CI**. Run `gh pr checks <n> --watch` (or `gh run watch <run id>`) to the end. Report each
   check's state. For a failure, include the job's log tail
   (`gh run view <run id> --log-failed`, the last 80 lines).
@@ -116,9 +117,10 @@ Don't guess.
   the owner said yes, and names the one action. Without that, report BLOCKED.
 - **`main` changes only by merging the PR.** The guard allows `git push` only in a plain
   shape: `-u`, `-q`, `-v`, `-n`, `--porcelain`, `--force-with-lease`, `--force-if-includes`
-  and `-o`, each spelled out on its own, then the remote, then the branch by name. It
-  refuses `main` or `master` as a destination, deletes, `+` and pattern refspecs, `--repo`,
-  `--tags` and `--no-verify`. Don't look for a way
+  and `-o`, each spelled out on its own, then the remote, then the branch by name, with no
+  global options or environment variables in front. It refuses `main` or `master` as a
+  destination, deletes, `+` and pattern refspecs, `--repo`, `--tags`, `--no-verify`, and
+  any push while `remote.<name>.push` is configured, since config can redirect it. Don't look for a way
   around it, because the main session would have to authorise any exception, and it won't.
 - **Plain commands.** The guard reads every git and gh command and refuses what it can't
   read: git behind `bash -c`, `xargs`, `env` or `eval`, a `$(...)` or backticks, and

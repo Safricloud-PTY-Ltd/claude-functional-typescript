@@ -52,7 +52,7 @@
             "command": "${CLAUDE_PROJECT_DIR}/.claude/hooks/check-file.sh",
             "args": [],
             "timeout": 180,
-            "statusMessage": "typecheck \u00b7 lint \u00b7 related tests"
+            "statusMessage": "typecheck · lint · related tests"
           }
         ]
       }

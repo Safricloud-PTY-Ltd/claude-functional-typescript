@@ -168,14 +168,23 @@ function checkAffected(root, territories, agentId, verb, files) {
   }
 }
 
+// Every file under paths whose working copy, staged copy or untracked state differs from HEAD:
+// what `git add -- paths` or `git commit -- paths` would stage, commit or unstage. The staged
+// set matters: a file another architect staged, whose working copy now matches HEAD, shows in
+// no working-tree diff, yet naming it would overwrite that staged change.
+function touched(dir, paths) {
+  const unstaged = gitLines(dir, ['diff', '--name-only', 'HEAD', '--', ...paths]);
+  const staged = gitLines(dir, ['diff', '--name-only', '--cached', 'HEAD', '--', ...paths]);
+  const untracked = gitLines(dir, ['ls-files', '--full-name', '--others', '--exclude-standard', '--', ...paths]);
+  return [...unstaged, ...staged, ...untracked];
+}
+
 function checkAdd(inv, root, territories, agentId) {
   const { options, paths } = split(inv.args, () => false);
   const bad = options.filter((o) => !['-v', '--verbose'].includes(o));
   if (bad.length) refuse(`\`git add\` takes explicit paths and no ${bad.join(' ')}: -A, -u, -f, -p and the rest reach past your own files.`);
   if (paths.length === 0) refuse('`git add` needs at least one path.');
-  const staged = gitLines(inv.dir, ['diff', '--name-only', 'HEAD', '--', ...paths]);
-  const untracked = gitLines(inv.dir, ['ls-files', '--full-name', '--others', '--exclude-standard', '--', ...paths]);
-  checkAffected(root, territories, agentId, 'add', [...staged, ...untracked].map((f) => path.join(root, f)));
+  checkAffected(root, territories, agentId, 'add', touched(inv.dir, paths).map((f) => path.join(root, f)));
 }
 
 function checkCommit(inv, root, territories, agentId) {
@@ -186,8 +195,7 @@ function checkCommit(inv, root, territories, agentId) {
   const bad = options.filter((o) => !allowed(o));
   if (bad.length) refuse(`\`git commit\` takes \`-m <msg> -- <paths>\` and no ${bad.join(' ')}: -a, -i, --amend, --fixup, -C and the rest commit more than the files you name, or rewrite history.`);
   if (paths.length === 0) refuse('`git commit` needs at least one path; with none it commits the whole shared index, other architects\' staged files included.');
-  const files = gitLines(inv.dir, ['diff', '--name-only', 'HEAD', '--', ...paths]);
-  checkAffected(root, territories, agentId, 'commit', files.map((f) => path.join(root, f)));
+  checkAffected(root, territories, agentId, 'commit', touched(inv.dir, paths).map((f) => path.join(root, f)));
 }
 
 // gh that only reads: a read subcommand in any group, a read-only group, `gh auth status`, and
@@ -224,11 +232,16 @@ function checkPush(inv) {
     || o.startsWith('--push-option=') || o.startsWith('--force-with-lease=');
   const bad = options.filter((o) => !allowed(o));
   if (bad.length) refuse(`\`git push ${bad.join(' ')}\`: the git manager pushes with only ${[...PUSH_OPTIONS].join(', ')} and -o, each spelled out on its own, the remote first, then the branch by name. A force push takes --force-with-lease.`);
+  // An explicit remote and refspec, always: with none, push.default or a configured
+  // remote.<name>.push decides the destination, and either can name main.
+  if (paths.length < 2) refuse('`git push` names its remote and the branch: `git push -u origin <branch>`. Without a refspec, git config decides where it goes.');
+  const remote = paths[0];
+  const configured = spawnSync('git', ['config', '--get-all', `remote.${remote}.push`], { cwd: inv.dir, encoding: 'utf8' });
+  if ((configured.stdout || '').trim()) refuse(`remote.${remote}.push is configured (${configured.stdout.trim().split('\n')[0]}), so it can rewrite where a push lands. The main session decides about that config; the guard won't push through it.`);
   const refspecs = paths.slice(1);
   const own = (r) => r === 'HEAD' || r === '@';
-  if (refspecs.length === 0 || refspecs.some(own)) {
-    // `git push`, `git push origin` and `git push origin HEAD` push the current branch;
-    // refuse them on main.
+  if (refspecs.some(own)) {
+    // `git push origin HEAD` pushes the current branch; refuse it on main.
     const r = spawnSync('git', ['branch', '--show-current'], { cwd: inv.dir, encoding: 'utf8' });
     const current = (r.stdout || '').trim();
     if (r.status !== 0 || current === '' || PROTECTED.test(current)) refuse('`git push` with no refspec from the default branch, or from a detached or unknown HEAD. main changes only by merging the PR; push the effort\'s branch by name.');
@@ -273,7 +286,11 @@ function decide(input) {
       refuse(`\`gh ${[inv.verb, inv.args[0]].filter(Boolean).join(' ')}\` changes GitHub state, or the guard can't tell that it doesn't. ${allowedHere}`);
     }
     if (manager) {
-      if (inv.verb === 'push') checkPush(inv);
+      if (inv.verb === 'push') {
+        const extra = inv.globals.filter((g) => g !== '--no-pager');
+        if (extra.length || inv.assigned) refuse(`\`git push\` runs plainly: no ${extra.length ? extra.join(' ') : 'environment variables'} in front of it, since config set there can redirect the push.`);
+        checkPush(inv);
+      }
       continue;
     }
     const extra = inv.globals.filter((g) => !['--no-pager'].includes(g));
