@@ -51,13 +51,19 @@ function tokenize(s) {
   const out = [];
   let cur = null;
   let quoted = false;
-  const push = () => { if (cur !== null) out.push({ word: cur, quoted }); cur = null; quoted = false; };
+  // What bash would still expand in the word: `bare` holds its unquoted characters (quoted or
+  // escaped ones as \0), and `dollar` notes a $ outside single quotes.
+  let bare = '';
+  let dollar = false;
+  const expands = () => dollar || /[*?[]/.test(bare) || /\{[^{}]*(,|\.\.)[^{}]*\}/.test(bare) || bare.startsWith('~');
+  const reset = () => { cur = null; quoted = false; bare = ''; dollar = false; };
+  const push = () => { if (cur !== null) out.push({ word: cur, quoted, expands: expands() }); reset(); };
   for (let i = 0; i < s.length;) {
     const c = s[i];
     if (c === "'") {
       const j = s.indexOf("'", i + 1);
       if (j < 0) refuse('an unterminated quote');
-      cur = (cur ?? '') + s.slice(i + 1, j); quoted = true; i = j + 1; continue;
+      cur = (cur ?? '') + s.slice(i + 1, j); bare += '\0'; quoted = true; i = j + 1; continue;
     }
     if (c === '"') {
       let j = i + 1;
@@ -65,12 +71,13 @@ function tokenize(s) {
       while (j < s.length && s[j] !== '"') {
         if (s[j] === '\\' && j + 1 < s.length && '"\\$`\n'.includes(s[j + 1])) { buf += s[j + 1]; j += 2; continue; }
         if (s[j] === '`' || s.startsWith('$(', j)) refuse('a command substitution');
+        if (s[j] === '$') dollar = true;
         buf += s[j]; j += 1;
       }
       if (j >= s.length) refuse('an unterminated quote');
-      cur = (cur ?? '') + buf; quoted = true; i = j + 1; continue;
+      cur = (cur ?? '') + buf; bare += '\0'; quoted = true; i = j + 1; continue;
     }
-    if (c === '\\' && i + 1 < s.length) { cur = (cur ?? '') + s[i + 1]; i += 2; continue; }
+    if (c === '\\' && i + 1 < s.length) { cur = (cur ?? '') + s[i + 1]; bare += '\0'; i += 2; continue; }
     if (c === '`' || s.startsWith('$(', i)) refuse('a command substitution');
     if (s.startsWith('<<', i)) refuse('a heredoc');
     if (c === '#' && cur === null) { const j = s.indexOf('\n', i); i = j < 0 ? s.length : j; continue; }
@@ -78,13 +85,14 @@ function tokenize(s) {
     if (/\s/.test(c)) { push(); i += 1; continue; }
     const redirect = cur === null || /^\d+$/.test(cur) ? /^(&>>?|>>?&?|<&?)(\d+|-)?/.exec(s.slice(i)) : null;
     if (redirect) {
-      cur = null; quoted = false;
+      reset();
       out.push({ op: redirect[2] ? 'dup' : 'redirect' });
       i += redirect[0].length; continue;
     }
     const op = ['&&', '||', ';', '|', '&', '(', ')'].find((o) => s.startsWith(o, i));
     if (op) { push(); out.push({ op }); i += op.length; continue; }
-    cur = (cur ?? '') + c; i += 1;
+    if (c === '$') dollar = true;
+    cur = (cur ?? '') + c; bare += c; i += 1;
   }
   push();
   return out;
@@ -121,6 +129,8 @@ function invocations(command, cwd) {
       if (WRAPPERS.has(path.basename(head).toLowerCase()) && rest.some((t) => /\b(git|gh)\b/.test(t.word))) refuse(`git or gh behind \`${head}\``);
       continue;
     }
+    // The guard judges the words it sees; bash would hand git something else.
+    if (seg.slice(k).some((t) => t.expands)) refuse('a shell expansion ($, a glob, a brace list or ~) in a git or gh command, which the guard can\'t see past; write the value literally (quote a glob meant for git)');
     if (isGh(head)) {
       found.push({ tool: 'gh', dir, globals: [], verb: seg[k + 1]?.word ?? '', args: seg.slice(k + 2).map((t) => t.word), assigned });
       continue;

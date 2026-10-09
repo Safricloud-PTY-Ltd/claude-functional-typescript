@@ -304,7 +304,8 @@ every one of them is in your territory. Naming paths on `commit` keeps other arc
 staged files out of your commit. `git commit -- <dir>` commits only tracked files, so `git
 add` new files first, and check `git status --short -- <territory>` before you report. The
 guard lets nothing else through: no switching, `restore`, `stash`, `reset`, `rm` or `push`,
-no gh that writes, and no git behind `xargs`, `env`, `bash -c` or a `$(...)`. Any other git
+no gh that writes, no git behind `xargs`, `env`, `bash -c` or a `$(...)`, and no `$name`,
+unquoted glob or brace list in a git command: name every path literally. Any other git
 you need is a NEEDS report, and the orchestrator decides whether the git manager does it.
 Undo a deliberate-break check with Edit, not `git checkout`.
 

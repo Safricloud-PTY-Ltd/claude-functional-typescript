@@ -123,8 +123,9 @@ Don't guess.
   any push while `remote.<name>.push` is configured, since config can redirect it. Don't look for a way
   around it, because the main session would have to authorise any exception, and it won't.
 - **Plain commands.** The guard reads every git and gh command and refuses what it can't
-  read: git behind `bash -c`, `xargs`, `env` or `eval`, a `$(...)` or backticks, and
-  heredocs. So text with quotes, backticks or newlines (commit messages, PR bodies,
+  read: git behind `bash -c`, `xargs`, `env` or `eval`, a `$(...)` or backticks, heredocs,
+  and any word bash would still expand (`$name`, an unquoted glob, `{a,b}`, a leading `~`).
+  Write every value literally. So text with quotes, backticks or newlines (commit messages, PR bodies,
   replies) travels as a file. The main session writes it to the scratchpad, and you pass it
   with `-F`, `--body-file` or `gh api ... -F body=@<file>`. A short message fits in single
   quotes.
