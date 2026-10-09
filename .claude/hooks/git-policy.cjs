@@ -69,7 +69,8 @@ function tokenize(s) {
       let j = i + 1;
       let buf = '';
       while (j < s.length && s[j] !== '"') {
-        if (s[j] === '\\' && j + 1 < s.length && '"\\$`\n'.includes(s[j + 1])) { buf += s[j + 1]; j += 2; continue; }
+        if (s[j] === '\\' && s[j + 1] === '\n') { j += 2; continue; }   // a line continuation: bash drops both
+        if (s[j] === '\\' && j + 1 < s.length && '"\\$`'.includes(s[j + 1])) { buf += s[j + 1]; j += 2; continue; }
         if (s[j] === '`' || s.startsWith('$(', j)) refuse('a command substitution');
         if (s[j] === '$') dollar = true;
         buf += s[j]; j += 1;
@@ -77,9 +78,14 @@ function tokenize(s) {
       if (j >= s.length) refuse('an unterminated quote');
       cur = (cur ?? '') + buf; bare += '\0'; quoted = true; i = j + 1; continue;
     }
+    if (c === '\\' && s[i + 1] === '\n') { i += 2; continue; }   // a line continuation: the word goes on
     if (c === '\\' && i + 1 < s.length) { cur = (cur ?? '') + s[i + 1]; bare += '\0'; i += 2; continue; }
     if (c === '`' || s.startsWith('$(', i)) refuse('a command substitution');
     if (s.startsWith('<<', i)) refuse('a heredoc');
+    if (s.startsWith('<(', i) || s.startsWith('>(', i)) refuse('a process substitution');
+    // An unquoted < or > ends the word before it (`HEAD:main>log` is HEAD:main, redirected),
+    // unless that word is all digits, which makes it the redirected descriptor.
+    if ((c === '<' || c === '>' || (c === '&' && s[i + 1] === '>')) && cur !== null && !/^\d+$/.test(cur)) push();
     if (c === '#' && cur === null) { const j = s.indexOf('\n', i); i = j < 0 ? s.length : j; continue; }
     if (c === '\n') { push(); out.push({ op: ';' }); i += 1; continue; }
     if (/\s/.test(c)) { push(); i += 1; continue; }
