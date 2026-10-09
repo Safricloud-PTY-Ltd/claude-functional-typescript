@@ -3,9 +3,10 @@
 // stdin; exit 0 allows, exit 2 blocks with the reason on stderr. Deny by default:
 //
 //   main session (no agent_id)  anything: the orchestrator, or a solo architect
-//   git-manager (a sub-agent)   any git and any gh, except a `git push` that would change main
-//                               or master, delete a remote ref, or force without a lease: the
-//                               branch, the remote, the PR and CI are its job
+//   git-manager (a sub-agent)   any git and any gh, but `git push` only in one shape: the
+//                               checked-out effort branch (feat|fix|chore/<id>) under its own
+//                               name (checkPush). The branch, the PR and CI are its job; main
+//                               changes only by merging the PR
 //   every other sub-agent       read-only git verbs (READ_ONLY below), `git -C <dir>` and
 //                               `--no-pager` only as global options; read-only gh (ghReadOnly)
 //   architect (a sub-agent)     also `git add` and `git commit`, with explicit paths, when
@@ -36,8 +37,6 @@ const GH_READ_GROUPS = new Set(['search', 'help', 'version', '--version', '--hel
 // push` would read `.` as the verb.
 const GLOBAL_WITH_VALUE = new Set(['-c', '--git-dir', '--work-tree', '--namespace', '--config-env',
   '--super-prefix', '--attr-source', '--list-cmds']);
-// A push destination naming the default branch, which changes only by merging the PR.
-const PROTECTED = /^\+?(?:[^:]*:)?(?:refs\/heads\/)?(main|master)$/;
 
 const isGit = (w) => /(^|[\\/])git(\.exe)?$/i.test(w);
 const isGh = (w) => /(^|[\\/])gh(\.exe)?$/i.test(w);
@@ -234,41 +233,34 @@ function ghReadOnly(inv) {
   return GH_READ.has(sub ?? '');
 }
 
-// The git manager's one fence: main moves only by merging the PR, no remote ref is deleted,
-// and nothing is force-pushed without a lease. An allowlist, because git's push grammar has
-// too many spellings to deny one by one (short-option clusters, --repo, globbed refspecs):
-// only these options, spelled out; the remote as the first positional; each refspec a plain
-// `<src>` or `<src>:<dst>` with no `+`, no `*`, no empty side, and no protected destination.
+// The git manager's one fence: main moves only by merging the PR. Rather than judge every way
+// git can spell a destination (clusters, --repo, patterns, deletes, abbreviated refs like
+// heads/main, config-driven mappings), the guard accepts one shape: the effort's own branch,
+// checked out, pushed under its own name. Options come from a short list, spelled out; the
+// remote is a plain name with no remote.<name>.push mapping; the one refspec is HEAD, @, or
+// exactly the current branch; and the current branch is an effort branch, feat|fix|chore/<id>.
 const PUSH_OPTIONS = new Set(['-u', '--set-upstream', '-q', '--quiet', '-v', '--verbose', '-n',
   '--dry-run', '--porcelain', '--force-with-lease', '--force-if-includes']);
+const EFFORT_BRANCH = /^(feat|fix|chore)\/[A-Za-z0-9][A-Za-z0-9._-]*$/;
 function checkPush(inv) {
+  const shape = 'The git manager pushes one shape: `git push [-u] [--force-with-lease] origin <the checked-out effort branch>`.';
   const takesValue = (o) => o === '-o' || o === '--push-option';
   const { options, paths } = split(inv.args, takesValue);
   const allowed = (o) => PUSH_OPTIONS.has(o) || o === '-o' || o === '--push-option'
-    || o.startsWith('--push-option=') || o.startsWith('--force-with-lease=');
+    || o.startsWith('--push-option=') || o === '--force-with-lease';
   const bad = options.filter((o) => !allowed(o));
-  if (bad.length) refuse(`\`git push ${bad.join(' ')}\`: the git manager pushes with only ${[...PUSH_OPTIONS].join(', ')} and -o, each spelled out on its own, the remote first, then the branch by name. A force push takes --force-with-lease.`);
-  // An explicit remote and refspec, always: with none, push.default or a configured
-  // remote.<name>.push decides the destination, and either can name main.
-  if (paths.length < 2) refuse('`git push` names its remote and the branch: `git push -u origin <branch>`. Without a refspec, git config decides where it goes.');
-  const remote = paths[0];
-  const configured = spawnSync('git', ['config', '--get-all', `remote.${remote}.push`], { cwd: inv.dir, encoding: 'utf8' });
-  if ((configured.stdout || '').trim()) refuse(`remote.${remote}.push is configured (${configured.stdout.trim().split('\n')[0]}), so it can rewrite where a push lands. The main session decides about that config; the guard won't push through it.`);
-  const refspecs = paths.slice(1);
-  const own = (r) => r === 'HEAD' || r === '@';
-  if (refspecs.some(own)) {
-    // `git push origin HEAD` pushes the current branch; refuse it on main.
-    const r = spawnSync('git', ['branch', '--show-current'], { cwd: inv.dir, encoding: 'utf8' });
-    const current = (r.stdout || '').trim();
-    if (r.status !== 0 || current === '' || PROTECTED.test(current)) refuse('`git push` with no refspec from the default branch, or from a detached or unknown HEAD. main changes only by merging the PR; push the effort\'s branch by name.');
-  }
-  for (const r of refspecs) {
-    if (r.startsWith('+')) refuse('a `+` refspec is a force push. Use --force-with-lease.');
-    if (r.includes('*')) refuse(`\`${r}\` is a pattern refspec, which can reach main. Push the effort's branch by name.`);
-    const sides = r.split(':');
-    if (sides.length > 2 || sides.some((x) => x === '')) refuse(`\`${r}\` deletes a remote ref or isn't a plain <src>:<dst>. Push the effort's branch by name.`);
-    if (PROTECTED.test(r)) refuse(`\`git push ... ${r}\` would change the default branch. main changes only by merging the PR.`);
-  }
+  const tick = (x) => '`' + x + '`';
+  if (bad.length) refuse(tick('git push ' + bad.join(' ')) + ': only ' + [...PUSH_OPTIONS].join(', ') + ' and -o, each spelled out on its own. ' + shape);
+  if (paths.length !== 2) refuse(tick('git push') + ' takes a remote and one refspec. ' + shape);
+  const [remote, refspec] = paths;
+  if (!/^[A-Za-z0-9][A-Za-z0-9._-]*$/.test(remote)) refuse(tick(remote) + " isn't a plain remote name. " + shape);
+  const configured = spawnSync('git', ['config', '--get-all', 'remote.' + remote + '.push'], { cwd: inv.dir, encoding: 'utf8' });
+  const mapping = (configured.stdout || '').trim();
+  if (mapping) refuse('remote.' + remote + '.push is configured (' + mapping.split('\n')[0] + "), so it can rewrite where a push lands. The main session decides about that config; the guard won't push through it.");
+  const r = spawnSync('git', ['branch', '--show-current'], { cwd: inv.dir, encoding: 'utf8' });
+  const current = (r.stdout || '').trim();
+  if (r.status !== 0 || !EFFORT_BRANCH.test(current)) refuse('the checked-out branch is ' + (current ? tick(current) : 'detached or unknown') + ', not an effort branch (feat|fix|chore/<id>). main changes only by merging the PR. ' + shape);
+  if (!['HEAD', '@', current].includes(refspec)) refuse(tick(refspec) + " isn't the checked-out branch, " + tick(current) + '. ' + shape);
 }
 
 function decide(input) {

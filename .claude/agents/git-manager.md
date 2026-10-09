@@ -115,13 +115,14 @@ Don't guess.
   whose PR hasn't merged. Don't rewrite history someone else has pushed. Don't make a
   non-GET call to any service except this repo's GitHub. Any of these needs a job that says
   the owner said yes, and names the one action. Without that, report BLOCKED.
-- **`main` changes only by merging the PR.** The guard allows `git push` only in a plain
-  shape: `-u`, `-q`, `-v`, `-n`, `--porcelain`, `--force-with-lease`, `--force-if-includes`
-  and `-o`, each spelled out on its own, then the remote, then the branch by name, with no
-  global options or environment variables in front. It refuses `main` or `master` as a
-  destination, deletes, `+` and pattern refspecs, `--repo`, `--tags`, `--no-verify`, and
-  any push while `remote.<name>.push` is configured, since config can redirect it. Don't look for a way
-  around it, because the main session would have to authorise any exception, and it won't.
+- **`main` changes only by merging the PR.** The guard allows one push shape:
+  `git push [-u] [--force-with-lease] origin <branch>`, from the checked-out effort branch
+  (`feat|fix|chore/<id>`), naming that branch (or `HEAD`). The other options it accepts are
+  `-q`, `-v`, `-n`, `--porcelain`, `--force-if-includes` and `-o`, each spelled out on its
+  own. No global options or environment variables go in front, and no push goes out while
+  `remote.<name>.push` is configured. Everything else is refused: other branches, other
+  refspec forms, deletes, `--repo`, `--tags`, `--no-verify`. Don't look for a way around
+  it, because the main session would have to authorise any exception, and it won't.
 - **Plain commands.** The guard reads every git and gh command and refuses what it can't
   read: git behind `bash -c`, `xargs`, `env` or `eval`, a `$(...)` or backticks, heredocs,
   and any word bash would still expand (`$name`, an unquoted glob, `{a,b}`, a leading `~`).
