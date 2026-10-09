@@ -114,8 +114,11 @@ Don't guess.
   whose PR hasn't merged. Don't rewrite history someone else has pushed. Don't make a
   non-GET call to any service except this repo's GitHub. Any of these needs a job that says
   the owner said yes, and names the one action. Without that, report BLOCKED.
-- **`main` changes only by merging the PR.** The guard refuses a push to `main` or `master`,
-  a push that deletes a remote ref, and a force push without a lease. Don't look for a way
+- **`main` changes only by merging the PR.** The guard allows `git push` only in a plain
+  shape: `-u`, `-q`, `-v`, `-n`, `--porcelain`, `--force-with-lease`, `--force-if-includes`
+  and `-o`, each spelled out on its own, then the remote, then the branch by name. It
+  refuses `main` or `master` as a destination, deletes, `+` and pattern refspecs, `--repo`,
+  `--tags` and `--no-verify`. Don't look for a way
   around it, because the main session would have to authorise any exception, and it won't.
 - **Plain commands.** The guard reads every git and gh command and refuses what it can't
   read: git behind `bash -c`, `xargs`, `env` or `eval`, a `$(...)` or backticks, and

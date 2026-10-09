@@ -211,27 +211,35 @@ function ghReadOnly(inv) {
 }
 
 // The git manager's one fence: main moves only by merging the PR, no remote ref is deleted,
-// and nothing is force-pushed without a lease.
+// and nothing is force-pushed without a lease. An allowlist, because git's push grammar has
+// too many spellings to deny one by one (short-option clusters, --repo, globbed refspecs):
+// only these options, spelled out; the remote as the first positional; each refspec a plain
+// `<src>` or `<src>:<dst>` with no `+`, no `*`, no empty side, and no protected destination.
+const PUSH_OPTIONS = new Set(['-u', '--set-upstream', '-q', '--quiet', '-v', '--verbose', '-n',
+  '--dry-run', '--porcelain', '--force-with-lease', '--force-if-includes']);
 function checkPush(inv) {
-  const takesValue = (o) => ['-o', '--push-option', '--repo', '--receive-pack', '--exec'].includes(o);
+  const takesValue = (o) => o === '-o' || o === '--push-option';
   const { options, paths } = split(inv.args, takesValue);
-  const forced = options.filter((o) => o === '--force' || (/^-[a-zA-Z]+$/.test(o) && o.includes('f')));
-  if (forced.length) refuse(`\`git push ${forced.join(' ')}\`: use --force-with-lease, which refuses to overwrite commits you have not seen.`);
-  const wide = options.filter((o) => ['--all', '--mirror', '--branches', '--tags', '--delete', '-d', '--prune'].includes(o));
-  if (wide.length) refuse(`\`git push ${wide.join(' ')}\` reaches past the effort's branch. Push the branch by name.`);
-  // With --repo the remote is an option, so every positional is a refspec.
-  const remoteAsOption = options.some((o) => o === '--repo' || o.startsWith('--repo='));
-  const refspecs = remoteAsOption ? paths : paths.slice(1);
-  if (refspecs.length === 0 || refspecs.some((r) => r.replace(/^\+/, '') === 'HEAD')) {
+  const allowed = (o) => PUSH_OPTIONS.has(o) || o === '-o' || o === '--push-option'
+    || o.startsWith('--push-option=') || o.startsWith('--force-with-lease=');
+  const bad = options.filter((o) => !allowed(o));
+  if (bad.length) refuse(`\`git push ${bad.join(' ')}\`: the git manager pushes with only ${[...PUSH_OPTIONS].join(', ')} and -o, each spelled out on its own, the remote first, then the branch by name. A force push takes --force-with-lease.`);
+  const refspecs = paths.slice(1);
+  const own = (r) => r === 'HEAD' || r === '@';
+  if (refspecs.length === 0 || refspecs.some(own)) {
     // `git push`, `git push origin` and `git push origin HEAD` push the current branch;
     // refuse them on main.
     const r = spawnSync('git', ['branch', '--show-current'], { cwd: inv.dir, encoding: 'utf8' });
     const current = (r.stdout || '').trim();
-    if (r.status !== 0 || PROTECTED.test(current)) refuse('`git push` with no refspec from the default branch (or from an unknown branch). main changes only by merging the PR; push the effort\'s branch by name.');
+    if (r.status !== 0 || current === '' || PROTECTED.test(current)) refuse('`git push` with no refspec from the default branch, or from a detached or unknown HEAD. main changes only by merging the PR; push the effort\'s branch by name.');
   }
-  const hit = refspecs.find((r) => PROTECTED.test(r) || r.startsWith(':'));
-  if (hit) refuse(`\`git push ... ${hit}\` would change the default branch or delete a remote ref. main changes only by merging the PR.`);
-  if (refspecs.some((r) => r.startsWith('+'))) refuse('a `+` refspec is a force push. Use --force-with-lease.');
+  for (const r of refspecs) {
+    if (r.startsWith('+')) refuse('a `+` refspec is a force push. Use --force-with-lease.');
+    if (r.includes('*')) refuse(`\`${r}\` is a pattern refspec, which can reach main. Push the effort's branch by name.`);
+    const sides = r.split(':');
+    if (sides.length > 2 || sides.some((x) => x === '')) refuse(`\`${r}\` deletes a remote ref or isn't a plain <src>:<dst>. Push the effort's branch by name.`);
+    if (PROTECTED.test(r)) refuse(`\`git push ... ${r}\` would change the default branch. main changes only by merging the PR.`);
+  }
 }
 
 function decide(input) {
