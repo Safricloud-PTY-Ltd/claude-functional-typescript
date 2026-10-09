@@ -11,7 +11,12 @@ import { fileURLToPath } from 'node:url';
 const PAYLOAD = ['CLAUDE.md', '.claude'];
 
 /** Payload paths that belong to the source repo alone and must never be shipped. */
-const EXCLUDED = ['.claude/agent-memory', '.claude/locks', '.claude/settings.local.json'];
+const EXCLUDED = [
+  '.claude/agent-memory',
+  '.claude/locks',
+  '.claude/territories',
+  '.claude/settings.local.json',
+];
 
 const HELP = `Bootstrap a project with the Claude Code functional-TypeScript scaffold.
 
