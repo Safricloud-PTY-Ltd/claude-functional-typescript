@@ -3,7 +3,7 @@
 A scaffold for building functional TypeScript with Claude Code, delivered by one command.
 
 It is not a library and not an application. It is the harness — five agents, a set of write
-and git guards, and three skills — that turns Claude Code into a team that writes contracts first,
+and git guards, and four skills — that turns Claude Code into a team that writes contracts first,
 tests second, and implementations last, in a codebase where failures are values and I/O is
 kept at the edge.
 
@@ -45,6 +45,7 @@ CLAUDE.md                     your project's instructions to Claude — fill in 
     code-standards/           the rulebook: how every function, type, and test is written
     project-scaffold/         the toolchain, plus the configs it installs, in assets/
     pr-review/                Codex or Claude pull-request review on request, and the script that asks
+    codex-subagents/          test-writers and implementors on Codex (GPT) instead of Claude, with a file check
 ```
 
 Nothing else is copied. The scaffold's own working files — this README, `bin/`,

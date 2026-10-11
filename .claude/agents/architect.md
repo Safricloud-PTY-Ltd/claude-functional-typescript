@@ -156,6 +156,10 @@ You brief, verify, and decide; sub-agents write the code.
 - **One branch, one checkout.** Every sub-agent works in this checkout on the contribution
   branch. Parallelism comes from disjoint files, not worktrees. The write guard gives each
   file at most one owner per phase.
+- **Which sub-agents.** CLAUDE.md's **Sub-agents** setting decides: `claude` starts the
+  test-writer and implementor agents; `codex` dispatches every brief through the
+  `codex-subagents` skill instead, and nothing below about hooks or locks protects those runs,
+  so its file check and your own validation do.
 - **Sub-agents edit; you commit.** They return what changed, what they didn't do, and where
   they departed from the brief. You verify, record departures under the phase's
   **Deviations**, then commit. State-changing git is blocked for sub-agents by hook.
