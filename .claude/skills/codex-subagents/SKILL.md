@@ -66,6 +66,13 @@ still holds; only the way a brief is dispatched changes.
 
 ## Notes
 
+- **Codex can read only inside this repo.** Its sandbox is the checkout: a path in another
+  repository or in the scratchpad is unreadable, and the agent either asks or writes something
+  plausible from the contract alone. Inline any outside fact a brief needs (a reference file's
+  relevant part, a measured value) into the brief itself, verbatim. Gitignored files inside the
+  repo (`private-fixtures/`, `.cache/`) are readable. A "run it against the real asset" check on
+  anything outside the repo is yours to do by hand.
+
 - Codex gets your brief, its role file (`.claude/agents/test-writer.md` or `implementor.md`),
   `CLAUDE.md` and the code-standards skill, in that order. Briefs must name every file to read,
   as before; it has no memory of earlier briefs.
