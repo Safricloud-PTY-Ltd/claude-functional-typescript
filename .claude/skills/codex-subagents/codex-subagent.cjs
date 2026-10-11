@@ -51,6 +51,7 @@ function buildPrompt(role, workstream, brief, allowed) {
   return [
     `You are the ${role} sub-agent for architect ${workstream}, running on Codex in this repository (${ROOT}).`,
     `Follow your role file below. Differences because you run on Codex, not Claude Code:`,
+    `- This repository's AGENTS.md describes Codex working alone as the owner of a whole task. You are not that here: you are a sub-agent with one brief. Where AGENTS.md and this prompt differ (scope, git, commits, PRs, asking the owner), this prompt and your role file win.`,
     `- Edit files only with apply_patch. Create or edit ONLY the files listed under "Allowed files"; any other write is a violation the architect will see.`,
     `- Never run git commands that change state (add, commit, checkout, restore, stash, reset). Read-only git is fine.`,
     `- Run exactly the validation commands your brief names (pnpm exec vitest/tsgo/eslint/prettier on your paths). Never pnpm check, never the full suite.`,
