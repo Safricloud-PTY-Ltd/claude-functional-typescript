@@ -28,13 +28,19 @@ still holds; only the way a brief is dispatched changes.
    validation commands). Name every file it may create or edit in `in/allowed.txt`, one
    repo-relative path per line. The run directory is `<scratchpad>/<workstream>/codex/<brief id>/run`
    (it must not exist yet).
-2. Start every brief of the phase in one Bash call, then wait on each:
+2. Start **one brief per Bash call**, and never chain several `start`s (or a `start` with
+   anything else) in one command: the owner is asked to approve a compound Codex command even in
+   bypass-permissions mode. Run briefs one by one in series: start one, wait on it, read its
+   report, then start the next.
 
    ```bash
-   W=.claude/skills/codex-subagents/codex-subagent.cjs
-   node $W start test-writer <ws> "<dir>/in/brief.md" "<dir>/in/allowed.txt" "<dir>/run" medium
-   # … one start per brief …
-   node $W wait "<dir>/run"     # prints the report; exit 3 = still running, call wait again
+   node .claude/skills/codex-subagents/codex-subagent.cjs start test-writer <ws> "<dir>/in/brief.md" "<dir>/in/allowed.txt" "<dir>/run" medium
+   ```
+
+   then, in its own Bash call:
+
+   ```bash
+   node .claude/skills/codex-subagents/codex-subagent.cjs wait "<dir>/run"   # exit 3 = still running; call again
    ```
 
    Effort: `medium` by default; `high` for a brief you'd call hard. Use a Bash timeout of 600000 on
