@@ -66,6 +66,10 @@ still holds; only the way a brief is dispatched changes.
 
 ## Notes
 
+- **Each run starts cold.** A standing rule told to one run is unknown to the next: put every
+  permission the brief grants in the brief itself, every time (most often: "you may add the
+  imports the body needs"; four of nineteen implementor runs stopped on its absence).
+
 - **Codex can read only inside this repo.** Its sandbox is the checkout: a path in another
   repository or in the scratchpad is unreadable, and the agent either asks or writes something
   plausible from the contract alone. Inline any outside fact a brief needs (a reference file's
