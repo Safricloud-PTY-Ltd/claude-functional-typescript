@@ -1,6 +1,10 @@
 {
   "$schema": "./node_modules/@stryker-mutator/core/schema/stryker-schema.json",
   "testRunner": "vitest",
+  "plugins": [
+    "@stryker-mutator/vitest-runner"
+  ],
+  "dryRunTimeoutMinutes": 30,
   "mutate": [
     "src/**/*.ts",
     "!src/**/*.test.ts",
@@ -10,7 +14,16 @@
     "!src/app/**",
     "!src/shared/stub.ts"
   ],
-  "reporters": ["clear-text", "html"],
-  "htmlReporter": { "fileName": "reports/mutation.html" },
-  "thresholds": { "high": 90, "low": 75, "break": 70 }
+  "reporters": [
+    "clear-text",
+    "html"
+  ],
+  "htmlReporter": {
+    "fileName": "reports/mutation.html"
+  },
+  "thresholds": {
+    "high": 90,
+    "low": 75,
+    "break": 70
+  }
 }

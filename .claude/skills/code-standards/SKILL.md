@@ -92,6 +92,11 @@ draw.
 - `core/` never imports `shell/` or `app/`; `shell/` may import its domain's `core/`
   barrel; `app/` may import anything; nothing imports `app/` (enforced).
 - `import type { ... }` for types. No default exports. No circular imports (enforced).
+- ESM only: no `require`, `createRequire` or `require.resolve` (enforced). To load a heavy
+  module late, `await import('#name')` at a boundary that is already async (a command's
+  dispatch) and pass the module into deps. A synchronous lazy load means the seam is in the
+  wrong place. `createRequire` also loads a second copy outside the test runner's pipeline,
+  which silently overwrites that file's coverage.
 
 ## Functions
 
@@ -208,6 +213,30 @@ export const lineTotal = (
   `drizzle-zod`; a shape is declared once.
 - `app/` parses `process.env` once into a typed `Env` and builds every `Deps` object from
   it. Nothing else reads `process.env`.
+- A port that must not throw (a log, a clock) takes its destination as a parameter, so the
+  failure case can be tested at all. A log that writes straight to `process.stderr` can't be
+  tested against `EPIPE`.
+
+### Input that a user or a third party controls
+
+Parsed is not the same as bounded. These held up review after review:
+
+- **Tables keyed by an outside string use `Object.hasOwn`.** `table['constructor']` returns
+  `Object`. Before calling a hit a bug, check whether the inherited value is observable.
+- **Numbers that become an index, a length or a repeat count need a stated ceiling.**
+  `Number.isSafeInteger` is a shape, not a bound: `2 ** 32` throws `RangeError` from a pure
+  function, and `10 ** 7` silently builds 30 MB. Where no vendor limit exists, invent one,
+  anchor it on measured data, and say so in the JSDoc.
+- **Depth is measured, never caught.** Recursive walks over JSON overflow at about 1,000
+  levels on Node, while `JSON.parse` handles far deeper. Count depth first with a bounded,
+  non-recursive fold and refuse past a documented maximum. A caught stack overflow isn't a
+  contract, because the stack left over depends on the caller.
+- **`typeof x === 'object'` admits `null`.** It isn't a guard before `Object.entries(x)`.
+- **A regex over input is checked for ambiguity at every boundary**, not just the first.
+  Two adjacent classes that can match the same character make it exponential. Prefer a small
+  scanner, or alternatives that can't overlap, and prove linearity with growing adversarial
+  inputs, never one input.
+- **Two functions that must agree on one rule share a named predicate**, not two guards.
 
 ## Tests
 
@@ -225,6 +254,27 @@ export const lineTotal = (
   plain objects. Module mocking (`vi.mock`) is not used.
 - A test's name states the behaviour: `it('returns InvalidDiscount when discount is above 1')`.
   Names like `works` or `handles edge case` are rejected in review.
+- Shared test builders live in the domain's own `test-support/` module, not copied into each
+  file. They drift into different signatures. `index.test.ts` keeps its own, since it imports
+  only the barrel. Coverage excludes `test-support/`.
+- A fake replaces a dependency, never the thing under test. A fake server that implements
+  the routes itself leaves the real server's routing untested.
+- **Property tests and their traps:**
+  - Generate `fc.double` wherever a number comes from text; `fc.integer` can't see `5.5`.
+  - Draw dangerous keys (`__proto__`, `constructor`, `prototype`) from an explicit pool when a
+    value crosses a parse or copy. `fc.jsonValue()` produces `__proto__` about once in 100,000
+    objects.
+  - Never assert that a library's rebuilt output equals a generated input: zod drops a nested
+    `__proto__`, and JSON can't carry `-0`. Assert acceptance and the real round trip.
+- A guard test is built from the shape that breaks. A timing guard that only tried
+  one-character names passed an exponential regex at 0.0 ms. A differential test reports
+  its hit rate: one that matched 1 input in 250,000 "agreed" on everything.
+- A race needs a test that reaches it: a fake clock that settles every sleep at once can't
+  test cancellation mid-wait. Let the test decide what a sleep waits on.
+- Timing bounds are set from a measurement under load, not idle. Measure the duration
+  before blaming the subject of a timeout.
+- A falsification probe confirms that it changed the code (not just the file, or a
+  comment), and a probe that stays green is read before it's trusted.
 
 ## JSDoc and comments
 

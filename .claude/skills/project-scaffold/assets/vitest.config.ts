@@ -10,6 +10,8 @@ export default defineConfig({
       exclude: [
         'src/**/*.test.ts',
         'src/**/*.test-d.ts',
+        // A domain's shared test builders are test code, like *.test.ts.
+        'src/**/test-support/**',
         'src/**/index.ts',
         'src/app/main.ts',
         'src/shared/stub.ts',

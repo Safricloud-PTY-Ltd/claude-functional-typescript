@@ -146,8 +146,12 @@ post it, and say what you checked.
    new file, `side` is `RIGHT`, and a multi-line suggestion adds `start_line` and
    `start_side`. A suggestion replaces exactly lines `start_line` to `line`.
 
-   ```bash
-   gh api repos/{owner}/{repo}/pulls/N/reviews --method POST --input - <<'JSON'
+   Write the payload to `node_modules/.cache/review/<reviewer>-<n>.json` (ignored with
+   `node_modules`) with your file-writing tool (Write or Edit in Claude Code, apply_patch in
+   Codex), never with a shell redirect, `echo`, `tee` or a here-document. Then pass the
+   file's path:
+
+   ```json
    {
      "commit_id": "<headRefOid>",
      "event": "COMMENT",
@@ -157,18 +161,24 @@ post it, and say what you checked.
          "body": "**P1**: what is wrong and why.\n\n```suggestion\n  return ok(a + b);\n```" }
      ]
    }
-   JSON
    ```
 
-   Send the payload on stdin as shown. If your shell can't take a here-document, write the
-   payload to `node_modules/.cache/review/<reviewer>-<n>.json` (ignored with
-   `node_modules`) and pass that path to `--input`. With no inline findings, send
-   `"comments": []`.
+   ```bash
+   gh api repos/{owner}/{repo}/pulls/N/reviews --method POST --input node_modules/.cache/review/<reviewer>-<n>.json
+   ```
+
+   With no inline findings, send `"comments": []`. Don't send the payload on stdin (`--input -`,
+   `--body-file -`, a here-document): an unattended Claude reviewer runs in `dontAsk` mode,
+   which refuses those commands, and only the file route is on its allow list (measured: two
+   rounds of one PR lost their posts to stdin). The same goes for
+   probes: write a probe file with the file tool, never with a shell redirect.
 
    GitHub rejects the **whole** review (HTTP 422) if any inline comment points at a line
    outside the diff. On a 422, move every inline finding into the body under **Findings**,
-   with its fix as a ```` ```diff ```` block, and post again with `"comments": []`. If that
-   fails too, post the body with `gh pr comment N --body-file -`.
+   with its fix as a ```` ```diff ```` block, rewrite the file with `"comments": []`, and post
+   again. If that fails too, write the body alone to
+   `node_modules/.cache/review/<reviewer>-<n>.md` and post it with
+   `gh pr comment N --body-file <that path>`.
 6. **Finish** by printing the posted review's URL (`html_url` in the response). If nothing
    could be posted, print the error and the full review body so the requester can post it.
 

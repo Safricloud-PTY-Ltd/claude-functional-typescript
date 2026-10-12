@@ -238,6 +238,33 @@ result, deviations, what it did not do, and a `Needs`, `Blocked on`, or `Clarify
 A sub-agent that reports a typecheck error in a file it doesn't own has met a sibling
 mid-write. Tell it to retry; if the error is still there at phase verification, it's yours.
 
+What verifying a DONE has had to catch:
+
+- **Diff the body against the brief, and ask which inputs would tell them apart.** A seed
+  that added the page being left changed only page-change events: for every click the two
+  ids are the same page, so nothing in the suite went red.
+- **Say which assertion may change and why.** A brief that says "change no existing
+  assertion" will eventually contradict its own fix. A sub-agent that stops to ask instead
+  of flipping an assertion quietly is doing the right thing.
+- **Sub-agents that refuse to weaken a fixture find real defects.** Say in the brief that a
+  disagreement between a test and the code is a report, not something to resolve.
+
+## Answering a review
+
+- **Check a finding's mechanism, not just its conclusion, and measure the neighbouring
+  line.** A finding can be wrong about how something happens and still point at a worse
+  bug beside it, or true and narrower than it reads. Measure which inputs reach the flagged
+  branch before changing behaviour.
+- **Your reply claims only what you measured.** The reviewer checks replies against the
+  code. Prove a performance fix with growing adversarial inputs and a timing curve. Prove a
+  security fix by following the value to where it lands, not by stopping at the call site.
+- **Time a suspected catastrophic case outside the test runner, under a bound, and kill it
+  after.** Before reporting DONE, check that no process of yours is still running. A
+  forgotten probe holds a core and makes siblings' tests time out.
+- **The git rule is yours to keep, even when nothing stops you.** `git rm`, `git checkout
+  --` and a heredoc commit are off your list. The hooks don't always run. A new file outside
+  your territory is a NEEDS before it exists.
+
 ## The git manager
 
 When you are the main session, one git manager does every state-changing git and GitHub

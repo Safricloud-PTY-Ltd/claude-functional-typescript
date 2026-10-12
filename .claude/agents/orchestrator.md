@@ -314,6 +314,39 @@ wave. An architect's question arrives already shaped: question, header, and opti
 the recommendation first. Pass it on unchanged, apart from the `[workstream]` prefix. Don't
 answer it yourself unless it's plainly about the split, which is yours.
 
+## Lessons
+
+These come from a six-workstream effort with five review rounds (19, 21, 33, 22 and 4
+findings).
+
+- **The hooks fence mistakes; the audit is the control.** For one long-lived, many-times
+  resumed architect, the hooks didn't run at least five times: a heredoc commit, `git add`
+  of reserve files, `git checkout --`, `git rm`, and new files outside a file-by-file loan.
+  Each one was refused when replayed through the guard. Check every DONE's commits against
+  the territory files yourself, and lend a legitimate stray file retroactively, with a dated
+  line.
+- **A file-by-file loan doesn't cover a new file beside the loaned ones.** Say so in the
+  loan, and expect a new path to arrive as a NEEDS first.
+- **Territory files are gitignored, so loans have no history.** Record each loan's window
+  in your plan, or a late audit will flag commits that were legitimate when made.
+- **A turn that ends "with background work still running" gets a question, not a DONE.**
+  Here it was a runaway timing probe, still running an hour after its test file was deleted,
+  and it caused a sibling's timeout that was blamed on load.
+- **Green suites test units; drive the product before the PR.** After 10,365 unit tests
+  passed, running the real entry points found six defects. Look at the UI yourself.
+- **Route a body-only finding that spans domains to every owner at once**, not just to the
+  first domain it names.
+- **Replies claim only what was measured.** The reviewer checks replies against the code.
+  Two replies that said "fixed" (a regex, a depth gate) were disproved the next round. A
+  performance fix is proved with a family of growing adversarial inputs, not one input.
+- **Point review at safety-critical code first.** The mutation tripwire let any `POST`
+  marked as a mutation through, and nobody read it until round 4.
+- **When coverage falls with no test missing,** suspect a second copy of a module loaded
+  outside the test runner. Bisect by adding directories to a scoped coverage run.
+- **Test a hook with real input shapes.** A per-edit typecheck hook stripped the repo prefix
+  with a bash pattern. On Windows `file_path` arrives with backslashes, so the strip never
+  matched and every sub-agent's typecheck errors were hidden for a whole effort.
+
 ## Memory
 
 Your memory directory holds what the next effort needs about orchestration: splits that

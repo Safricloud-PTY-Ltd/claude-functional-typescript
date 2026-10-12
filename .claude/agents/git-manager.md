@@ -162,6 +162,17 @@ These were found the hard way, in an effort with thirteen architects.
   and before MERGE. `request-review.sh` removes its own on any exit, but a killed run can't, so
   check rather than assume. Keep worktree paths short (`<scratchpad>/rw<round>`): on Windows a
   long scratchpad path plus the repo's deepest files passes the 260-character limit.
+- `gh api repos/<o>/<r>/pulls/<n>/reviews` returns 30 at a time, and every inline batch is
+  its own review, so a busy PR passes 30 quickly. Use `--paginate`, or the review id.
+- A reviewer's own post is best-effort: an unattended session can refuse its posting
+  command. When you post a round for it, post the reviewer's saved body as a review (so
+  the marker counts) through `--input <file>`, and check first that the body matches the
+  reviewer's text byte for byte.
+- The push rule checks a command's shape, not its destination. Run from inside another
+  repo's worktree, a push of that repo's branch passes. So a job that touches another
+  repository must state its authority, and you say in the report that it did.
+- Before you trust a report of leftover files from a reviewer that ran in a worktree, look
+  in the shared checkout. They usually went with the worktree.
 
 ## Report
 

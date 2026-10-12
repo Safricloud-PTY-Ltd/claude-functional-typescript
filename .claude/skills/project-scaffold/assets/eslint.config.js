@@ -90,6 +90,20 @@ export default defineConfig(
           message:
             'A named function inside a function is a contract the architect has not written. Report it under Needs.',
         },
+        // ESM only. A require loads a second copy outside the test runner's pipeline, which
+        // silently overwrites coverage. Load late with `await import()` at an async boundary.
+        {
+          selector: 'ImportSpecifier[imported.name="createRequire"]',
+          message: 'ESM only: use `await import()` at an async boundary, not createRequire.',
+        },
+        {
+          selector: 'CallExpression[callee.name=/^(require|createRequire)$/]',
+          message: 'ESM only: use `import` or `await import()`, not require.',
+        },
+        {
+          selector: 'MemberExpression[object.name="require"]',
+          message: 'ESM only: no require.resolve or require.cache; use import.meta.resolve.',
+        },
       ],
 
       // Types.

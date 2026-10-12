@@ -19,11 +19,12 @@ fields=$(node "$root/.claude/hooks/hook-input.cjs" tool_input.file_path agent_id
 
 case "$path" in *.ts|*.tsx|*.mts|*.cts) ;; *) exit 0 ;; esac
 [[ -f "$path" ]] || exit 0
-# Windows hands over backslashed paths; compare with forward slashes.
-root="${root//\\//}"
-path="${path//\\//}"
-rel="${path#"$root"/}"
 cd "$root" || exit 0
+# Repo-relative with forward slashes, which is how tsgo and eslint print paths. Normalising the
+# slashes alone isn't enough on Windows: file_path and CLAUDE_PROJECT_DIR can differ in
+# drive-letter case, or in /c/... against C:/... spelling, and then a prefix strip matches
+# nothing and the typecheck filter below hides every error.
+rel=$(node -e 'const p = require("node:path"); process.stdout.write(p.relative(process.cwd(), p.resolve(process.argv[1])).split(p.sep).join("/"))' "$path") || exit 0
 
 report=""
 failed=0
