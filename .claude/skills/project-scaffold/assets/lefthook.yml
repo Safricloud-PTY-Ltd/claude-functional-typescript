@@ -7,7 +7,11 @@ pre-commit:
       run: pnpm exec prettier --check {staged_files}
     - name: lint
       glob: '*.{ts,js}'
-      run: pnpm exec eslint --max-warnings 0 {staged_files}
+      # .claude/ ships the template configs in project-scaffold/assets/; ESLint would take that
+      # eslint.config.js as the nearest config for those files and fail on its imports.
+      exclude:
+        - '.claude/**'
+      run: pnpm exec eslint --max-warnings 0 --no-warn-ignored {staged_files}
     # Whole-project, so it is skipped while the orchestrator has territories live: parallel
     # architects' half-written files would fail each other's commits. They typecheck their
     # own paths, and pre-push runs the full check.
