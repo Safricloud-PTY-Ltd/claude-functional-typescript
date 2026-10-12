@@ -19,6 +19,9 @@ fields=$(node "$root/.claude/hooks/hook-input.cjs" tool_input.file_path agent_id
 
 case "$path" in *.ts|*.tsx|*.mts|*.cts) ;; *) exit 0 ;; esac
 [[ -f "$path" ]] || exit 0
+# Windows hands over backslashed paths; compare with forward slashes.
+root="${root//\\//}"
+path="${path//\\//}"
 rel="${path#"$root"/}"
 cd "$root" || exit 0
 
