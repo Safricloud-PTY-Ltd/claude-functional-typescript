@@ -4,4 +4,5 @@ coverage/
 reports/
 .stryker-tmp/
 .claude/locks/
+.claude/territories/
 .claude/settings.local.json

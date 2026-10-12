@@ -5,4 +5,5 @@ node_modules/
 # ordinary committed content; here it is local-only.
 .claude/agent-memory/
 .claude/locks/
+.claude/territories/
 .claude/settings.local.json

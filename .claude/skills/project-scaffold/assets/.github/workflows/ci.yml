@@ -1,11 +1,16 @@
 name: ci
+
+# A PR stays in draft through its review loop and CI runs once, when it is marked ready
+# (ready_for_review). Pushes to a ready PR run it again; pushes to a draft don't.
 on:
   pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
   push:
     branches: [main]
 
 jobs:
   check:
+    if: github.event_name != 'pull_request' || !github.event.pull_request.draft
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5

@@ -11,7 +11,12 @@ import { fileURLToPath } from 'node:url';
 const PAYLOAD = ['CLAUDE.md', '.claude'];
 
 /** Payload paths that belong to the source repo alone and must never be shipped. */
-const EXCLUDED = ['.claude/agent-memory', '.claude/locks', '.claude/settings.local.json'];
+const EXCLUDED = [
+  '.claude/agent-memory',
+  '.claude/locks',
+  '.claude/territories',
+  '.claude/settings.local.json',
+];
 
 const HELP = `Bootstrap a project with the Claude Code functional-TypeScript scaffold.
 
@@ -109,7 +114,7 @@ const formatReport = (plan, target) => {
   const created = plan.filter((action) => action.kind === 'create').length;
   const skipped = plan.length - created;
   const kept = skipped === 0 ? '' : `\n  kept ${skipped} existing file(s); --force overwrites`;
-  return `\n  wrote ${created} file(s) to ${target}${kept}\n\nNext:\n  claude --agent architect\n`;
+  return `\n  wrote ${created} file(s) to ${target}${kept}\n\nNext:\n  claude    (the orchestrator; claude --agent architect for a solo architect)\n`;
 };
 
 /**
