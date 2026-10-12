@@ -110,8 +110,14 @@ violation (re-verified 2026-09-17 for the nested-module rules with a four-deep t
 illegal imports). Knip's config was first executed on 2026-10-01 (knip 6.39) on a freshly bootstrapped
 Windows project: `neverthrow` and `zod` are in `ignoreDependencies` because the starter tree
 installs them before any code imports them, and `dot` (Graphviz, for `deps:graph`) is in
-`ignoreBinaries`; an unused file is still reported. Stryker's config was written from its
-documented schema and is unexecuted.
+`ignoreBinaries`; an unused file is still reported. Stryker's config was first executed on
+2026-10-12 (Stryker 10.0, pnpm 11), on a project of 780 mutated files, and needed three changes.
+Under pnpm's isolated layout, Stryker can't discover `@stryker-mutator/vitest-runner` by itself,
+so `plugins` names it. The initial test run of a large suite outlasts the default five-minute
+`dryRunTimeoutMinutes`, so it is 30. And a test that asserts wall-clock time, or reads source
+files as text, fails in Stryker's instrumented sandbox and nowhere else: make such tests skip
+themselves under mutation, or keep them out of the run with a Stryker-only vitest config
+(`vitest.configFile` in `stryker.config.json`).
 
 When a tool's major version changes, re-run every script, re-check the negative cases (a
 `let`, a nested named function, a `throw` in core, a `core/` → `shell/` import, a cross-domain

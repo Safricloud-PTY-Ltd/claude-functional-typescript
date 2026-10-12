@@ -194,11 +194,22 @@ function touched(dir, paths) {
   return [...unstaged, ...staged, ...untracked];
 }
 
+// A directory pathspec is checked here but read by git later: a sub-agent running outside the
+// hooks (Codex) can write a new file into it in between, and the commit takes it. File paths
+// close that race. Found 2026-10-11, when a directory commit swept in another territory's file.
+function refuseDirectories(dir, paths, verb) {
+  const dirs = paths.filter((p) => {
+    try { return fs.statSync(path.resolve(dir, p)).isDirectory(); } catch { return false; }
+  });
+  if (dirs.length) refuse(`\`git ${verb}\` takes file paths, not directories (${dirs.join(', ')}): a directory is read when git runs, after this check, so a file written into it meanwhile would be taken too. List the files (\`git status --short -- <dir>\`).`);
+}
+
 function checkAdd(inv, root, territories, agentId) {
   const { options, paths } = split(inv.args, () => false);
   const bad = options.filter((o) => !['-v', '--verbose'].includes(o));
   if (bad.length) refuse(`\`git add\` takes explicit paths and no ${bad.join(' ')}: -A, -u, -f, -p and the rest reach past your own files.`);
   if (paths.length === 0) refuse('`git add` needs at least one path.');
+  refuseDirectories(inv.dir, paths, 'add');
   checkAffected(root, territories, agentId, 'add', touched(inv.dir, paths).map((f) => path.join(root, f)));
 }
 
@@ -210,6 +221,7 @@ function checkCommit(inv, root, territories, agentId) {
   const bad = options.filter((o) => !allowed(o));
   if (bad.length) refuse(`\`git commit\` takes \`-m <msg> -- <paths>\` and no ${bad.join(' ')}: -a, -i, --amend, --fixup, -C and the rest commit more than the files you name, or rewrite history.`);
   if (paths.length === 0) refuse('`git commit` needs at least one path; with none it commits the whole shared index, other architects\' staged files included.');
+  refuseDirectories(inv.dir, paths, 'commit');
   checkAffected(root, territories, agentId, 'commit', touched(inv.dir, paths).map((f) => path.join(root, f)));
 }
 

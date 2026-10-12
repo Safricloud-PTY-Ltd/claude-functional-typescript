@@ -1,0 +1,183 @@
+#!/usr/bin/env node
+// Runs a test-writer or implementor brief on Codex (GPT) instead of a Claude sub-agent.
+// Codex runs outside Claude's hooks, so this script supplies the containment: it records every
+// file's hash before the run and, when the run ends, classifies every changed file against the
+// brief's allowed list and the live territories. It never reverts anything; the architect decides.
+//
+//   node codex-subagent.cjs start  <test-writer|implementor> <workstream> <brief.md> <allowed.txt> <outdir> [effort]
+//   node codex-subagent.cjs wait   <outdir> [seconds=540]     prints the report when done; exit 3 if still running
+//   node codex-subagent.cjs resume <outdir> <message.md>      continues the same Codex session (answers to NEEDS)
+//
+// <allowed.txt>: one repo-relative path per line, the only files the brief may create or edit.
+// <outdir>: a fresh directory under the scratchpad, one per brief (e.g. .../scratchpad/runtime/codex/I-runtime-3.2).
+'use strict';
+const fs = require('node:fs');
+const path = require('node:path');
+const crypto = require('node:crypto');
+const { spawn, spawnSync, execFileSync } = require('node:child_process');
+
+const ROOT = path.resolve(__dirname, '..', '..', '..');
+// The model is CLAUDE.md's choice; override per machine with CODEX_SUBAGENT_MODEL.
+const MODEL = process.env.CODEX_SUBAGENT_MODEL || 'gpt-6-astra';
+
+// Codex's JS entry, run with this Node so no shell has to quote paths that contain spaces.
+const findCodexJs = () => {
+  const entry = (dir) => path.join(dir, '@openai', 'codex', 'bin', 'codex.js');
+  const quick = [process.env.CODEX_JS, process.env.APPDATA && entry(path.join(process.env.APPDATA, 'npm', 'node_modules'))]
+    .find((p) => p && fs.existsSync(p));
+  if (quick) return quick;
+  try {
+    const global = entry(execFileSync('npm', ['root', '-g'], { encoding: 'utf8', shell: true }).trim());
+    return fs.existsSync(global) ? global : '';
+  } catch { return ''; }
+};
+const CODEX_JS = findCodexJs();
+const territory = require(path.join(ROOT, '.claude', 'hooks', 'territory.cjs'));
+
+const die = (msg) => { process.stderr.write(`codex-subagent: ${msg}\n`); process.exit(2); };
+const read = (p) => fs.readFileSync(p, 'utf8');
+const stripFrontmatter = (s) => s.replace(/^---\n[\s\S]*?\n---\n/, '');
+
+function snapshot() {
+  const out = execFileSync('git', ['ls-files', '-co', '--exclude-standard', '-z'], { cwd: ROOT, encoding: 'utf8', maxBuffer: 1 << 28 });
+  const hashes = {};
+  for (const rel of out.split('\0').filter(Boolean)) {
+    try { hashes[rel] = crypto.createHash('sha1').update(fs.readFileSync(path.join(ROOT, rel))).digest('hex'); } catch { /* deleted mid-scan */ }
+  }
+  return hashes;
+}
+
+function buildPrompt(role, workstream, brief, allowed) {
+  return [
+    `You are the ${role} sub-agent for architect ${workstream}, running on Codex in this repository (${ROOT}).`,
+    `Follow your role file below. Differences because you run on Codex, not Claude Code:`,
+    `- This repository's AGENTS.md describes Codex working alone as the owner of a whole task. You are not that here: you are a sub-agent with one brief. Where AGENTS.md and this prompt differ (scope, git, commits, PRs, asking the owner), this prompt and your role file win.`,
+    `- Edit files only with apply_patch. Create or edit ONLY the files listed under "Allowed files"; any other write is a violation the architect will see.`,
+    `- Never run git commands that change state (add, commit, checkout, restore, stash, reset). Read-only git is fine.`,
+    `- Run exactly the validation commands your brief names (pnpm exec vitest/tsgo/eslint/prettier on your paths). Never pnpm check, never the full suite.`,
+    `- Your final message is your report, in the format your role file gives. Start each text block with your brief id.`,
+    '',
+    '===== ROLE FILE =====',
+    stripFrontmatter(read(path.join(ROOT, '.claude', 'agents', `${role}.md`))),
+    '===== REPOSITORY INSTRUCTIONS (CLAUDE.md) =====',
+    read(path.join(ROOT, 'CLAUDE.md')),
+    '===== CODE STANDARDS (the rulebook you are checked against) =====',
+    stripFrontmatter(read(path.join(ROOT, '.claude', 'skills', 'code-standards', 'SKILL.md'))),
+    '===== YOUR BRIEF =====',
+    brief,
+    '===== ALLOWED FILES (the only files you may create or edit) =====',
+    allowed.join('\n'),
+  ].join('\n');
+}
+
+const codexArgs = (effort, lastFile) => [
+  // `exec resume` accepts neither -s nor -C, so the sandbox is a config override and the working
+  // directory comes from the spawn's cwd; both forms then work for start and resume alike.
+  CODEX_JS, 'exec', '--json', '-m', MODEL, '-c', `model_reasoning_effort=${effort}`,
+  '-c', 'sandbox_mode=workspace-write',
+  '-c', 'shell_environment_policy.inherit=all', '-c', 'shell_environment_policy.ignore_default_excludes=true',
+  '-o', lastFile,
+];
+
+// Detached runner: runs codex synchronously, then writes the exit code and the report.
+function run(outdir, mode) {
+  const meta = JSON.parse(read(path.join(outdir, 'meta.json')));
+  const n = mode === 'resume' ? meta.turns : 0;
+  const prompt = mode === 'resume' ? read(path.join(outdir, `message-${n}.md`)) : read(path.join(outdir, 'prompt.md'));
+  const last = path.join(outdir, `last-${n}.md`);
+  let args = codexArgs(meta.effort, last);
+  if (mode === 'resume') args = [CODEX_JS, 'exec', 'resume', meta.threadId, ...args.slice(2)];
+  const r = spawnSync(process.execPath, [...args, '-'], {
+    input: prompt, cwd: ROOT, maxBuffer: 1 << 28, encoding: 'utf8', windowsHide: true,
+  });
+  fs.writeFileSync(path.join(outdir, `events-${n}.jsonl`), r.stdout || '');
+  fs.writeFileSync(path.join(outdir, `stderr-${n}.log`), (r.stderr || '') + (r.error ? `\n${r.error}` : ''));
+  const thread = (r.stdout || '').split('\n').map((l) => { try { return JSON.parse(l); } catch { return undefined; } })
+    .find((e) => e && (e.type === 'thread.started' || e.thread_id));
+  if (thread && !meta.threadId) meta.threadId = thread.thread_id || thread.id;
+  fs.writeFileSync(path.join(outdir, 'meta.json'), JSON.stringify(meta, null, 2));
+  fs.writeFileSync(path.join(outdir, 'report.md'), report(outdir, meta, n, r.status));
+  fs.writeFileSync(path.join(outdir, `exit-${n}`), String(r.status ?? 1));
+}
+
+function report(outdir, meta, n, status) {
+  const before = JSON.parse(read(path.join(outdir, 'before.json')));
+  const after = snapshot();
+  const allowed = new Set(meta.allowed);
+  const territories = territory.load(ROOT);
+  const parent = path.dirname(outdir);
+  const siblings = fs.readdirSync(parent).filter((d) => d !== path.basename(outdir))
+    .map((d) => path.join(parent, d, 'meta.json')).filter((p) => fs.existsSync(p))
+    .map((p) => JSON.parse(read(p)));
+  const changed = [...new Set([...Object.keys(before), ...Object.keys(after)])]
+    .filter((f) => before[f] !== after[f]).sort();
+  const lines = changed.map((f) => {
+    const kind = !(f in after) ? 'deleted' : !(f in before) ? 'created' : 'modified';
+    if (allowed.has(f)) return `- ok      ${kind} ${f}`;
+    const owners = territory.holders(territories, f).map((t) => t.name);
+    const brief = siblings.find((s) => s.allowed.includes(f));
+    const why = brief ? `allowed to concurrent brief ${brief.briefId} (probably that one)`
+      : owners.length === 0 ? 'RESERVE — no territory: a stray write unless the orchestrator made it'
+      : owners.includes(meta.workstream) ? `STRAY — in ${meta.workstream}'s territory but not in this brief's allowed list`
+      : `in ${owners.join(', ')}'s territory (probably a sibling architect's agent)`;
+    return `- CHECK   ${kind} ${f} — ${why}`;
+  });
+  const lastFile = path.join(outdir, `last-${n}.md`);
+  return [
+    `# ${meta.briefId} (${meta.role}, ${MODEL}) — turn ${n}, codex exit ${status}`,
+    `Thread: ${meta.threadId || 'unknown'}`,
+    '',
+    '## Files changed since the brief started',
+    lines.length ? lines.join('\n') : '- none',
+    '',
+    '## Codex report',
+    fs.existsSync(lastFile) ? read(lastFile) : `(no final message; see ${path.join(outdir, `stderr-${n}.log`)})`,
+  ].join('\n');
+}
+
+function launch(outdir, mode) {
+  const child = spawn(process.execPath, [__filename, 'run', outdir, mode], { detached: true, stdio: 'ignore', cwd: ROOT, windowsHide: true });
+  child.unref();
+}
+
+function wait(outdir, seconds) {
+  const meta = JSON.parse(read(path.join(outdir, 'meta.json')));
+  const exitFile = path.join(outdir, `exit-${meta.turns}`);
+  const deadline = Date.now() + seconds * 1000;
+  while (!fs.existsSync(exitFile) && Date.now() < deadline) Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 5000);
+  if (!fs.existsSync(exitFile)) { process.stdout.write(`${meta.briefId}: still running (turn ${meta.turns})\n`); process.exit(3); }
+  process.stdout.write(read(path.join(outdir, 'report.md')) + '\n');
+}
+
+const [cmd, ...a] = process.argv.slice(2);
+if (cmd === 'start') {
+  const [role, workstream, briefFile, allowedFile, outdir, effort = 'medium'] = a;
+  if (!['test-writer', 'implementor'].includes(role) || !outdir) die('usage: start <test-writer|implementor> <workstream> <brief.md> <allowed.txt> <outdir> [effort]');
+  if (!CODEX_JS) die('codex CLI not found (npm i -g @openai/codex, or set CODEX_JS to its bin/codex.js)');
+  if (fs.existsSync(path.join(outdir, 'meta.json'))) die(`${outdir} already holds a brief; use a fresh directory or resume`);
+  fs.mkdirSync(outdir, { recursive: true });
+  const brief = read(briefFile);
+  const allowed = read(allowedFile).split(/\r?\n/).map((s) => s.trim().replace(/\\/g, '/')).filter(Boolean);
+  const briefId = (brief.match(/Brief\s+([TI]-[\w.-]+)/) || [])[1] || path.basename(outdir);
+  fs.writeFileSync(path.join(outdir, 'meta.json'), JSON.stringify({ briefId, role, workstream, effort, allowed, turns: 0 }, null, 2));
+  fs.writeFileSync(path.join(outdir, 'before.json'), JSON.stringify(snapshot()));
+  fs.writeFileSync(path.join(outdir, 'prompt.md'), buildPrompt(role, workstream, brief, allowed));
+  launch(outdir, 'start');
+  process.stdout.write(`${briefId}: started on ${MODEL} (${effort}); wait with: node ${path.relative(ROOT, __filename)} wait "${outdir}"\n`);
+} else if (cmd === 'resume') {
+  const [outdir, messageFile] = a;
+  const meta = JSON.parse(read(path.join(outdir, 'meta.json')));
+  if (!fs.existsSync(path.join(outdir, `exit-${meta.turns}`))) die(`${meta.briefId} is still running`);
+  if (!meta.threadId) die(`${meta.briefId} has no Codex thread id to resume; start a fresh brief`);
+  meta.turns += 1;
+  fs.writeFileSync(path.join(outdir, `message-${meta.turns}.md`), read(messageFile));
+  fs.writeFileSync(path.join(outdir, 'meta.json'), JSON.stringify(meta, null, 2));
+  launch(outdir, 'resume');
+  process.stdout.write(`${meta.briefId}: resumed (turn ${meta.turns})\n`);
+} else if (cmd === 'wait') {
+  wait(a[0], Number(a[1] || 540));
+} else if (cmd === 'run') {
+  run(a[0], a[1]);
+} else {
+  die('usage: start | wait | resume (see the header of this file)');
+}

@@ -31,8 +31,9 @@ sections are the rules you are checked against.
    resume you with a path for each need. When resumed, implement your contract and every
    stub tagged with your item number (`@stub 2.3`, or `@stub billing-2.3` under the
    orchestrator).
-4. If the list is empty, implement the body. Delete the `// @stub` line. Don't touch the
-   signature, the JSDoc, the imports, or the tests.
+4. If the list is empty, implement the body. Delete the `// @stub` line, and drop the `stub`
+   import if nothing else uses it. Add the imports the body needs (existing functions and types
+   only; a new function is a NEEDS). Don't touch the signature, the JSDoc, or the tests.
 5. Run exactly the validation commands the brief names. Fix what they report in your file.
    A typecheck error in a file you don't own is a sibling mid-write: retry once, then report
    it under "Not done".

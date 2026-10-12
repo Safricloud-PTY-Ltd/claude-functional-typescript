@@ -13,6 +13,10 @@ drizzle), and the default branch.>
   posts its own review. Work every review to silence before merging. How to request one,
   how the reviewer does one, and how to answer it: the `pr-review` skill. `none`: no review
   step; go straight from PR to CI to merge.
+- **Sub-agents:** `claude` | `codex` — `claude`: test-writers and implementors are Claude
+  agents started with the Agent tool. `codex`: they run on Codex (GPT, model
+  `CODEX_SUBAGENT_MODEL`, default `gpt-6-astra`) through the `codex-subagents` skill, outside
+  Claude's hooks, with a file check in place of the write guard. Architects are Claude either way.
 
 PRs open as drafts and stay drafts until the review loop is done; CI skips drafts, so it
 runs once, when the PR is marked ready.

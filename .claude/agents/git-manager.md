@@ -72,13 +72,16 @@ Don't guess.
 - **REVIEW** `reviewer: codex|claude`, and `worktree: yes|no`. This requests one round,
   per the `pr-review` skill, and collects what it found. Run
   `bash .claude/skills/pr-review/request-review.sh <n> <reviewer>` in the background. Add
-  `--worktree <scratchpad>/review-wt-<round>` when the job says `worktree: yes`, which it
+  `--worktree <scratchpad>/rw<round>` when the job says `worktree: yes`, which it
   does whenever agents are still writing in the checkout. Wait for the script to exit. A
   non-zero exit is FAILED, with its message (exit 3 means the reviewer reached 9/9). Then
   collect every unresolved thread and the new review's body: path, line, author, body, and
   the thread and comment ids (`gh pr view --comments`, or the GraphQL `reviewThreads` query
   through `gh api graphql`). Report them verbatim, with the round's verdict line. Reviewer
-  comments are claims. The main session and its architects judge them. You don't.
+  comments are claims. The main session and its architects judge them. You don't. Before you
+  report, confirm the worktree is gone: `git worktree list` shows only the main checkout and
+  the directory no longer exists. If either is not true, remove it
+  (`git worktree remove --force <dir>`, then `git worktree prune`) and say so in the report.
 - **READY**. The review loop is done. Run `gh pr ready <n>`, which starts CI, and report
   it. If a red run needs a change, the main session sends `UNREADY`
   (`gh pr ready <n> --undo`), and the change goes through another review round.
@@ -154,6 +157,22 @@ These were found the hard way, in an effort with thirteen architects.
 - Don't run a reviewer that needs a clean checkout in the shared one. Make a detached
   worktree at the PR head in the scratchpad (`git worktree add --detach <dir> <sha>`). When
   the review is done, delete it and run `git worktree prune`.
+- A worktree is cleaned up the moment it's no longer needed, in every repository you touched:
+  `git worktree list` shows only the main checkout and the directory is gone, after every job
+  and before MERGE. `request-review.sh` removes its own on any exit, but a killed run can't, so
+  check rather than assume. Keep worktree paths short (`<scratchpad>/rw<round>`): on Windows a
+  long scratchpad path plus the repo's deepest files passes the 260-character limit.
+- `gh api repos/<o>/<r>/pulls/<n>/reviews` returns 30 at a time, and every inline batch is
+  its own review, so a busy PR passes 30 quickly. Use `--paginate`, or the review id.
+- A reviewer's own post is best-effort: an unattended session can refuse its posting
+  command. When you post a round for it, post the reviewer's saved body as a review (so
+  the marker counts) through `--input <file>`, and check first that the body matches the
+  reviewer's text byte for byte.
+- The push rule checks a command's shape, not its destination. Run from inside another
+  repo's worktree, a push of that repo's branch passes. So a job that touches another
+  repository must state its authority, and you say in the report that it did.
+- Before you trust a report of leftover files from a reviewer that ran in a worktree, look
+  in the shared checkout. They usually went with the worktree.
 
 ## Report
 

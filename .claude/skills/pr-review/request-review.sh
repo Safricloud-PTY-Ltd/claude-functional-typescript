@@ -39,10 +39,26 @@ if [[ -n "$wt" ]]; then
   # and the cleanup must name the same directory after the cd into it.
   case "$wt" in /*|[A-Za-z]:*) ;; *) wt="$(pwd -P)/$wt" ;; esac
   [[ -e "$wt" ]] && fail "$wt already exists; give a fresh scratch path"
+  git -C "$root" worktree prune   # drop records left by an earlier run that was killed
   git -C "$root" fetch -q origin "$head" 2>/dev/null || true
-  git -C "$root" worktree add -q --detach "$wt" "$head" || fail "could not add a worktree at $wt"
+  git -C "$root" -c core.longpaths=true worktree add -q --detach "$wt" "$head" || fail "could not add a worktree at $wt"
   dir="$wt"
-  trap 'rm -rf "$wt"; git -C "$root" worktree prune' EXIT
+  # Always remove the worktree, even on failure. `git worktree remove --force` unregisters it and
+  # deletes it; rm -rf catches what a locked file left behind; prune drops any stale record. If the
+  # directory still exists afterwards, say so rather than leave it silently.
+  cleanup() {
+    git -C "$root" worktree remove --force "$wt" >/dev/null 2>&1
+    rm -rf "$wt" 2>/dev/null
+    git -C "$root" worktree prune
+    [[ -e "$wt" ]] && echo "request-review: could not remove $wt; delete it by hand" >&2
+    return 0
+  }
+  trap cleanup EXIT INT TERM
+  # A fresh worktree has no node_modules, so the reviewer could not run vitest. Install from the
+  # local store only (no network, no install scripts); node_modules is gitignored, so the tree
+  # stays clean. If it fails, the review still runs, from reading alone.
+  (cd "$wt" && pnpm install --frozen-lockfile --offline --ignore-scripts >/dev/null 2>&1) \
+    || echo "request-review: could not install node_modules in $wt; the reviewer will review by reading only" >&2
 fi
 
 at=$(git -C "$dir" rev-parse HEAD)
@@ -73,7 +89,8 @@ case "$R" in
         --permission-mode dontAsk --no-session-persistence \
         --allowedTools Read Grep Glob "Bash(git diff:*)" "Bash(git log:*)" "Bash(git show:*)" \
           "Bash(git rev-parse:*)" "Bash(git status:*)" "Bash(gh pr view:*)" "Bash(gh pr diff:*)" \
-          "Bash(gh api:*)" "Bash(gh pr comment:*)" "Bash(pnpm exec vitest run:*)"
+          "Bash(gh api:*)" "Bash(gh pr comment:*)" "Bash(pnpm exec vitest run:*)" \
+          "Edit(node_modules/.cache/review/**)" "Edit(./node_modules/.cache/review/**)"
     ;;
 esac
 status=$?
