@@ -30,8 +30,12 @@ still holds; only the way a brief is dispatched changes.
    (it must not exist yet).
 2. Start **one brief per Bash call**, and never chain several `start`s (or a `start` with
    anything else) in one command: the owner is asked to approve a compound Codex command even in
-   bypass-permissions mode. Run briefs one by one in series: start one, wait on it, read its
-   report, then start the next.
+   bypass-permissions mode. **Run a phase's briefs concurrently**: start every T brief of the
+   phase, one `start` per Bash call, back to back, then `wait` on each run in turn; the same for
+   the I briefs. Concurrent briefs must never share a file (the file check attributes a change
+   to the concurrent brief that was allowed it). A Codex run takes minutes, and its own
+   validation seconds, so serial runs are where a loop's time goes: one effort's phase of four
+   serial test-writer briefs took 18 minutes (2026-10-21).
 
    ```bash
    node .claude/skills/codex-subagents/codex-subagent.cjs start test-writer <ws> "<dir>/in/brief.md" "<dir>/in/allowed.txt" "<dir>/run" medium
