@@ -167,7 +167,9 @@ You brief, verify, and decide; sub-agents write the code.
   previous phase's file ownership is released.
 - **Each phase runs T, then I.** Dispatch every `T-<phase>.<item>` brief at once. When they
   return, confirm each test file fails with `NotImplemented` and not with a compile error.
-  Then dispatch every `I-<phase>.<item>` brief at once.
+  Then dispatch every `I-<phase>.<item>` brief at once. "At once" means concurrently, never one
+  after another, whichever sub-agents run them. When a later phase's tests need only contracts
+  that are already committed, dispatch its T briefs alongside the current phase's I briefs.
 - **Sub-agents validate narrowly.** The brief names the exact commands: the file's own tests,
   the typecheck, eslint on its path. Never the full suite, E2E, builds, or anything slow;
   several agents doing that in parallel is what makes the loop crawl. If a sub-agent needs
@@ -175,7 +177,11 @@ You brief, verify, and decide; sub-agents write the code.
 - **Blocked is a question for you, not a stop.** Answer NEEDS, BLOCKED, and CLARIFY reports
   (below), then resume the same sub-agent by its id so it keeps its context. Don't spawn a
   fresh agent to finish another's brief.
-- **Verify every phase, you, once.** Run the full check on the result. Read the diff of
+- **Verify every phase, you, once.** Run only what the phase touched:
+  `pnpm exec vitest related --run <the phase's changed source files>` plus its test files, the
+  typecheck filtered to your paths, and eslint on the changed files. No other tests. The full
+  check (`pnpm check`, or the scoped check under an orchestrator) runs once, before you report
+  DONE or open the PR, not per phase. Read the diff of
   anything load-bearing. `git grep` every new function name for a second definition.
   Revert one implementation and watch its test go red. Walk the standards checklist on each
   new file. Findings become a new item appended to the phase; fix the pattern everywhere,

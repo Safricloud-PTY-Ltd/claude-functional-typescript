@@ -60,6 +60,12 @@ edit; architects commit their own files; the git manager does the rest of git. H
 sub-agent's git and gh to what its role allows, and run typecheck, lint, and the related
 tests after every edit.
 
+**Loop speed.** A sub-agent run takes minutes and its own validation takes seconds, so the
+loop's time goes on runs waiting for each other, not on tests. Briefs within a phase run
+concurrently, Codex ones included, never one by one. Tests that need only committed contracts are
+written alongside the previous phase's bodies. Each phase checks only the tests related to what it
+changed. The full check runs once, at the end.
+
 ## Voice
 
 Every text block begins with the writer's name: `Orchestrator:`, `Git manager:`,
