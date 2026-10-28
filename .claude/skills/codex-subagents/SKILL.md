@@ -5,7 +5,7 @@ description: How an architect runs test-writer and implementor briefs on Codex (
 
 # Codex sub-agents
 
-When `CLAUDE.md`'s **Sub-agents** setting is `codex`, test-writers and implementors run on Codex (model: `CODEX_SUBAGENT_MODEL`, default `gpt-6-astra`),
+When `CLAUDE.md`'s **Sub-agents** setting is `codex`, test-writers and implementors run on Codex (model, effort and speed per role: CLAUDE.md **Models**),
 through `codex-subagent.cjs` in this directory. Architects stay Claude. Everything in your agent
 file about briefs, phases, T-then-I, NEEDS/CLARIFY/BLOCKED answers, verification and commits
 still holds; only the way a brief is dispatched changes.
@@ -53,8 +53,10 @@ still holds; only the way a brief is dispatched changes.
    node .claude/skills/codex-subagents/codex-subagent.cjs wait "<dir>/run"   # exit 3 = still running; call again
    ```
 
-   Effort: `medium` by default; `high` for a brief you'd call hard. Use a Bash timeout of 600000 on
-   `wait`.
+   Model, effort and speed come from the role's settings (CLAUDE.md **Models**); the 6th `start`
+   argument overrides the effort for one brief (`high` for a brief you'd call hard). A model
+   outside `CODEX_ALLOWED_MODELS` or a speed other than `default`, `fast`, `ultrafast` is refused
+   before anything starts. Use a Bash timeout of 600000 on `wait`.
 3. Read the report: the **Files changed** list first, then Codex's own report. Every `CHECK` line is
    yours to resolve before you go on:
    - `allowed to concurrent brief …` — another of your own runs wrote it; confirm in that report.

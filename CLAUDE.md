@@ -15,9 +15,23 @@ drizzle), and the default branch.>
   how the reviewer does one, and how to answer it: the `pr-review` skill. `none`: no review
   step; go straight from PR to CI to merge.
 - **Sub-agents:** `claude` | `codex` — `claude`: test-writers and implementors are Claude
-  agents started with the Agent tool. `codex`: they run on Codex (GPT, model
-  `CODEX_SUBAGENT_MODEL`, default `gpt-6-astra`) through the `codex-subagents` skill, outside
-  Claude's hooks, with a file check in place of the write guard. Architects are Claude either way.
+  agents started with the Agent tool. `codex`: they run on Codex (GPT, per **Models**)
+  through the `codex-subagents` skill, outside Claude's hooks, with a file check in place of
+  the write guard. Architects are Claude either way.
+- **Models:** model, effort and speed per role, set in `.claude/settings.json` `env` (a
+  machine overrides them in `settings.local.json`; restart Claude Code after changing
+  them). Effort is any level the model offers; Codex rejects an unknown one itself.
+  Speed is Codex's `service_tier`: `default`, `fast` or `ultrafast` (all three accepted by
+  codex-cli 0.155.1 on gpt-6-astra, 2026-10-28; Codex takes an unknown value silently, so
+  the scripts refuse anything else); empty leaves it to `~/.codex/config.toml`.
+  - PR reviewer, codex: `CODEX_REVIEW_MODEL`, `_EFFORT`, `_TIER`
+  - PR reviewer, claude: `CLAUDE_REVIEW_MODEL`, `_EFFORT`
+  - Test-writer and implementor on Codex: `CODEX_TEST_WRITER_*`, `CODEX_IMPLEMENTOR_*`; a
+    brief's own effort argument overrides `_EFFORT` for that brief
+  - Codex models allowed at all: `CODEX_ALLOWED_MODELS`, comma-separated; the review and
+    sub-agent scripts refuse any other. `gpt-6.1-sol` returned 400 here under a
+    ChatGPT-account login (2026-10-28); it works under other auth.
+  - Every Claude sub-agent: `CLAUDE_CODE_SUBAGENT_MODEL`
 
 PRs open as drafts and stay drafts until the review loop is done; CI skips drafts, so it
 runs once, when the PR is marked ready.
