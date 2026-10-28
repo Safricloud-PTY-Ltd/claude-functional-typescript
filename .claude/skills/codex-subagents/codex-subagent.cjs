@@ -8,13 +8,15 @@
 //   node codex-subagent.cjs wait   <outdir> [seconds=540]     prints the report when done; exit 3 if still running
 //   node codex-subagent.cjs resume <outdir> <message.md>      continues the same Codex session (answers to NEEDS)
 //
+// start and resume block until codex exits; run them with the Bash tool's run_in_background.
+//
 // <allowed.txt>: one repo-relative path per line, the only files the brief may create or edit.
 // <outdir>: a fresh directory under the scratchpad, one per brief (e.g. .../scratchpad/runtime/codex/I-runtime-3.2).
 'use strict';
 const fs = require('node:fs');
 const path = require('node:path');
 const crypto = require('node:crypto');
-const { spawn, spawnSync, execFileSync } = require('node:child_process');
+const { spawnSync, execFileSync } = require('node:child_process');
 
 const ROOT = path.resolve(__dirname, '..', '..', '..');
 // The model is CLAUDE.md's choice; override per machine with CODEX_SUBAGENT_MODEL.
@@ -88,7 +90,7 @@ function run(outdir, mode) {
   let args = codexArgs(meta.effort, last);
   if (mode === 'resume') args = [CODEX_JS, 'exec', 'resume', meta.threadId, ...args.slice(2)];
   const r = spawnSync(process.execPath, [...args, '-'], {
-    input: prompt, cwd: ROOT, maxBuffer: 1 << 28, encoding: 'utf8', windowsHide: true,
+    input: prompt, cwd: ROOT, maxBuffer: 1 << 28, encoding: 'utf8',
   });
   fs.writeFileSync(path.join(outdir, `events-${n}.jsonl`), r.stdout || '');
   fs.writeFileSync(path.join(outdir, `stderr-${n}.log`), (r.stderr || '') + (r.error ? `\n${r.error}` : ''));
@@ -135,10 +137,11 @@ function report(outdir, meta, n, status) {
   ].join('\n');
 }
 
-function launch(outdir, mode) {
-  const child = spawn(process.execPath, [__filename, 'run', outdir, mode], { detached: true, stdio: 'ignore', cwd: ROOT, windowsHide: true });
-  child.unref();
-}
+// Runs codex in this process. The architect starts `start` and `resume` with the Bash tool's
+// run_in_background, as a shell script would, so codex.exe shares Claude Code's own hidden
+// console. A detached runner has no console to hand down, and on Windows codex then opened a
+// visible one on every brief (2026-10-28).
+function launch(outdir, mode) { run(outdir, mode); }
 
 function wait(outdir, seconds) {
   const meta = JSON.parse(read(path.join(outdir, 'meta.json')));
@@ -162,8 +165,8 @@ if (cmd === 'start') {
   fs.writeFileSync(path.join(outdir, 'meta.json'), JSON.stringify({ briefId, role, workstream, effort, allowed, turns: 0 }, null, 2));
   fs.writeFileSync(path.join(outdir, 'before.json'), JSON.stringify(snapshot()));
   fs.writeFileSync(path.join(outdir, 'prompt.md'), buildPrompt(role, workstream, brief, allowed));
-  launch(outdir, 'start');
   process.stdout.write(`${briefId}: started on ${MODEL} (${effort}); wait with: node ${path.relative(ROOT, __filename)} wait "${outdir}"\n`);
+  launch(outdir, 'start');
 } else if (cmd === 'resume') {
   const [outdir, messageFile] = a;
   const meta = JSON.parse(read(path.join(outdir, 'meta.json')));
@@ -172,8 +175,8 @@ if (cmd === 'start') {
   meta.turns += 1;
   fs.writeFileSync(path.join(outdir, `message-${meta.turns}.md`), read(messageFile));
   fs.writeFileSync(path.join(outdir, 'meta.json'), JSON.stringify(meta, null, 2));
-  launch(outdir, 'resume');
   process.stdout.write(`${meta.briefId}: resumed (turn ${meta.turns})\n`);
+  launch(outdir, 'resume');
 } else if (cmd === 'wait') {
   wait(a[0], Number(a[1] || 540));
 } else if (cmd === 'run') {

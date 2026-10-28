@@ -20,7 +20,7 @@ const EXCLUDED = [
 
 const HELP = `Bootstrap a project with the Claude Code functional-TypeScript scaffold.
 
-  npx github:Safricloud-PTY-Ltd/claude-functional-typescript [directory] [--force]
+  npx --allow-git=all github:Safricloud-PTY-Ltd/claude-functional-typescript [directory] [--force]
 
   directory   Where to write CLAUDE.md and .claude/. Defaults to the current directory.
   --force     Overwrite files that already exist. Without it they are left alone.

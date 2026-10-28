@@ -95,9 +95,9 @@ subfolder per workstream, `<id>/<workstream>/`, with that architect's `review.md
    a comment on a territory file, resume that territory's architect with it, per **Review
    comments** below. When every architect you resumed is back to DONE, send `REPLY` with an
    answer for each thread, then `PUSH`, then `REVIEW` again. Each round reads the replies,
-   so aim each one at what the last skipped. Repeat until a round brings nothing new, or
-   the reviewer reaches 9/9, in which case list what's still open in a PR comment, with
-   what you decided about each.
+   so aim each one at what the last skipped. Repeat until a round brings nothing new or
+   only P3s (the `pr-review` skill's stopping rule), or the reviewer reaches 9/9, in which
+   case list what's still open in a PR comment, with what you decided about each.
 11. **Ready, CI, merge, deploy.** Send `READY`, which takes the PR out of draft and starts
    CI, then `CI`. If a red run needs a change, send `UNREADY`, fix it, and run another
    review round. Send `MERGE` when the auto-merge setting allows it, or when the diff is

@@ -6,11 +6,12 @@ drizzle), and the default branch.>
 ## Settings
 
 - **Auto-merge:** `yes` | `no` — `yes`: the architect merges its own PR once CI is green
-  and the review loop, if any, is silent. `no`: it reports and stops; the owner merges or
+  and the review loop, if any, is done. `no`: it reports and stops; the owner merges or
   says merge. A PR whose diff is documentation or comments only merges either way.
 - **PR reviewer:** `codex` | `claude` | `none` — `codex` or `claude`: requested when the PR
   is opened and after every push that changes it, at most 9 times per reviewer per PR, and
-  posts its own review. Work every review to silence before merging. How to request one,
+  posts its own review. Work the reviews until a round has nothing above P3 (the
+  `pr-review` skill's stopping rule) before merging. How to request one,
   how the reviewer does one, and how to answer it: the `pr-review` skill. `none`: no review
   step; go straight from PR to CI to merge.
 - **Sub-agents:** `claude` | `codex` — `claude`: test-writers and implementors are Claude
@@ -57,8 +58,8 @@ Each agent's full workflow lives in its agent file. Everyone works in this check
 effort's branch; there are no worktrees. Parallel agents never share a file. Sub-agents
 edit; architects commit their own files; the git manager does the rest of git. Hooks in
 `.claude/hooks/` enforce who may write which files (territories included), limit each
-sub-agent's git and gh to what its role allows, and run typecheck, lint, and the related
-tests after every edit.
+sub-agent's git and gh to what its role allows, and run typecheck, lint, and the edited
+file's own tests after every edit.
 
 **Loop speed.** A sub-agent run takes minutes and its own validation takes seconds, so the
 loop's time goes on runs waiting for each other, not on tests. Briefs within a phase run

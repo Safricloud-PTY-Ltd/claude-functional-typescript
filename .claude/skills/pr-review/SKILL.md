@@ -195,6 +195,13 @@ inline thread with `gh api repos/{owner}/{repo}/pulls/N/comments/<comment id>/re
 body=@<file>`, or with a PR comment that quotes the finding. Then push and request the next
 round.
 
-Stop when a round brings nothing new, or when the reviewer reaches 9/9. If findings are
-still open at the cap, list them in a PR comment with what was decided about each. Then
-mark the PR ready (`gh pr ready <n>`) and let CI run.
+Stop when a round brings nothing new, when every finding in a round is P3, or when the
+reviewer reaches 9/9. An all-P3 round counts only if its **Checked** list covers what the
+last push changed, and only if every P0–P2 from the round before was fixed rather than
+answered with a reason. Check each P3 like any claim: one that is really wrong behaviour or
+a broken rule is a P2, and the loop goes on. Answer P3s without another round. Fix one only
+when the fix changes no behaviour or signature and weakens no test (prose, JSDoc, names,
+comments, an added test); reply to the rest with the reason or the follow-up issue that
+takes them. If findings are still open at the cap, list them in a PR comment with what was
+decided about each, and the P3s moved to issues. Then mark the PR ready
+(`gh pr ready <n>`) and let CI run.

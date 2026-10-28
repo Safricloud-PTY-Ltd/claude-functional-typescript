@@ -18,7 +18,9 @@ still holds; only the way a brief is dispatched changes.
   allowed list) or `CHECK` with its likely owner. It never reverts anything.
 - **It can't commit.** Codex's sandbox keeps `.git` read-only, and the prompt forbids state-changing
   git. You commit, as before.
-- **It runs in the background**, hidden, and survives your tool call; `wait` blocks up to nine
+- **It runs in the background**: start and resume it with the Bash tool's `run_in_background`,
+  and it survives your tool call. It is not detached: a detached runner has no console to hand
+  down, and on Windows codex then opened a visible one on every brief. `wait` blocks up to nine
   minutes per call and can be called again.
 
 ## Dispatching a brief
@@ -41,7 +43,8 @@ still holds; only the way a brief is dispatched changes.
    node .claude/skills/codex-subagents/codex-subagent.cjs start test-writer <ws> "<dir>/in/brief.md" "<dir>/in/allowed.txt" "<dir>/run" medium
    ```
 
-   then, in its own Bash call:
+   with `run_in_background: true` on that Bash call (`start` blocks until codex exits). Then,
+   in its own Bash call:
 
    ```bash
    node .claude/skills/codex-subagents/codex-subagent.cjs wait "<dir>/run"   # exit 3 = still running; call again
