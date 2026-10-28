@@ -20,8 +20,11 @@ still holds; only the way a brief is dispatched changes.
   git. You commit, as before.
 - **It runs in the background**: start and resume it with the Bash tool's `run_in_background`,
   and it survives your tool call. It is not detached: a detached runner has no console to hand
-  down, and on Windows codex then opened a visible one on every brief. `wait` blocks up to nine
-  minutes per call and can be called again.
+  down, and on Windows a console window flashed on every brief; the foreground launcher ran a
+  real brief with no window (2026-10-28). `wait` blocks up to nine minutes per call and can be
+  called again; exit 3 means still
+  running, exit 4 means the run's process died (its Bash task was killed) with no result, so
+  start a fresh brief or resume it.
 
 ## Dispatching a brief
 

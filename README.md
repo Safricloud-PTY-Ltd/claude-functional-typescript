@@ -18,7 +18,9 @@ claude
 
 That is the whole install. It writes `CLAUDE.md` and `.claude/` and touches nothing else.
 npm 12 refuses git sources by default (`allow-git=none`); `--allow-git=all` opts this one
-command in, and it is the only value that works for a `github:` source.
+command in. Of its values (`all`, `none`, `root`) it is the only one that covers an `npx`
+of a `github:` source. Older npm versions weren't tested with the flag. On Windows the
+hooks need Git Bash, which Claude Code uses for its shell there.
 
 ```
 npx --allow-git=all github:Safricloud-PTY-Ltd/claude-functional-typescript [directory] [--force]

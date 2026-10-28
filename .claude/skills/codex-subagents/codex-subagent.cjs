@@ -5,7 +5,8 @@
 // brief's allowed list and the live territories. It never reverts anything; the architect decides.
 //
 //   node codex-subagent.cjs start  <test-writer|implementor> <workstream> <brief.md> <allowed.txt> <outdir> [effort]
-//   node codex-subagent.cjs wait   <outdir> [seconds=540]     prints the report when done; exit 3 if still running
+//   node codex-subagent.cjs wait   <outdir> [seconds=540]     prints the report when done; exit 3 if still running,
+//                                                             exit 4 if the run's process died without finishing
 //   node codex-subagent.cjs resume <outdir> <message.md>      continues the same Codex session (answers to NEEDS)
 //
 // start and resume block until codex exits; run them with the Bash tool's run_in_background.
@@ -138,17 +139,29 @@ function report(outdir, meta, n, status) {
 }
 
 // Runs codex in this process. The architect starts `start` and `resume` with the Bash tool's
-// run_in_background, as a shell script would, so codex.exe shares Claude Code's own hidden
-// console. A detached runner has no console to hand down, and on Windows codex then opened a
-// visible one on every brief (2026-10-28).
-function launch(outdir, mode) { run(outdir, mode); }
+// run_in_background, as a shell script would, so codex.exe shares Claude Code's own console.
+// The earlier detached runner had no console to hand down (Windows ignores CREATE_NO_WINDOW
+// next to DETACHED_PROCESS), and a windowsHide child gets a console of its own rather than
+// sharing one. With the detached runner a console window flashed on every brief on Windows;
+// with this foreground launcher a real brief ran with no window (owner-observed, 2026-10-28).
+// The pid lets `wait` tell a killed run from a slow one.
+function launch(outdir, mode) {
+  const metaFile = path.join(outdir, 'meta.json');
+  fs.writeFileSync(metaFile, JSON.stringify({ ...JSON.parse(read(metaFile)), pid: process.pid }, null, 2));
+  run(outdir, mode);
+}
+
+const alive = (pid) => { try { process.kill(pid, 0); return true; } catch { return false; } };
 
 function wait(outdir, seconds) {
   const meta = JSON.parse(read(path.join(outdir, 'meta.json')));
   const exitFile = path.join(outdir, `exit-${meta.turns}`);
   const deadline = Date.now() + seconds * 1000;
   while (!fs.existsSync(exitFile) && Date.now() < deadline) Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 5000);
-  if (!fs.existsSync(exitFile)) { process.stdout.write(`${meta.briefId}: still running (turn ${meta.turns})\n`); process.exit(3); }
+  if (!fs.existsSync(exitFile)) {
+    if (meta.pid && !alive(meta.pid)) { process.stdout.write(`${meta.briefId}: died (turn ${meta.turns}; pid ${meta.pid} gone, no exit file). Its Bash task was killed; start a fresh brief or resume if it has a thread id.\n`); process.exit(4); }
+    process.stdout.write(`${meta.briefId}: still running (turn ${meta.turns})\n`); process.exit(3);
+  }
   process.stdout.write(read(path.join(outdir, 'report.md')) + '\n');
 }
 
@@ -170,7 +183,7 @@ if (cmd === 'start') {
 } else if (cmd === 'resume') {
   const [outdir, messageFile] = a;
   const meta = JSON.parse(read(path.join(outdir, 'meta.json')));
-  if (!fs.existsSync(path.join(outdir, `exit-${meta.turns}`))) die(`${meta.briefId} is still running`);
+  if (!fs.existsSync(path.join(outdir, `exit-${meta.turns}`)) && !(meta.pid && !alive(meta.pid))) die(`${meta.briefId} is still running`);
   if (!meta.threadId) die(`${meta.briefId} has no Codex thread id to resume; start a fresh brief`);
   meta.turns += 1;
   fs.writeFileSync(path.join(outdir, `message-${meta.turns}.md`), read(messageFile));
@@ -179,8 +192,6 @@ if (cmd === 'start') {
   launch(outdir, 'resume');
 } else if (cmd === 'wait') {
   wait(a[0], Number(a[1] || 540));
-} else if (cmd === 'run') {
-  run(a[0], a[1]);
 } else {
   die('usage: start | wait | resume (see the header of this file)');
 }

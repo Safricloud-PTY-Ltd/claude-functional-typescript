@@ -278,7 +278,8 @@ What verifying a DONE has had to catch:
   `c:Users` on 2026-10-28).
 - **If every test file fails at collection** ("failed to find the current suite", "reading
   'config'"), check `node -p process.cwd()`. A lowercase drive letter (`c:\…`) makes vitest
-  load itself twice. Run `cd "$(pwd -W)"` first; it isn't a broken install or cache.
+  load itself twice. Run `cd "$(pwd -W)"` first (Git Bash on Windows); it isn't a broken
+  install or cache.
 
 ## The git manager
 

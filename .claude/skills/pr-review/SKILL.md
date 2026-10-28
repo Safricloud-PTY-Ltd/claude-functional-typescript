@@ -199,7 +199,7 @@ Stop when a round brings nothing new, when every finding in a round is P3, or wh
 reviewer reaches 9/9. An all-P3 round counts only if its **Checked** list covers what the
 last push changed, and only if every P0–P2 from the round before was fixed rather than
 answered with a reason. Check each P3 like any claim: one that is really wrong behaviour or
-a broken rule is a P2, and the loop goes on. Answer P3s without another round. Fix one only
+a broken rule is a P1 or P2, and the loop goes on. Answer P3s without another round. Fix one only
 when the fix changes no behaviour or signature and weakens no test (prose, JSDoc, names,
 comments, an added test); reply to the rest with the reason or the follow-up issue that
 takes them. If findings are still open at the cap, list them in a PR comment with what was
