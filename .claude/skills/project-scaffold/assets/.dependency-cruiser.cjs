@@ -51,8 +51,8 @@ module.exports = {
       from: {
         orphan: true,
         pathNot: [
-          '\\.test\\.ts$',
-          '\\.test-d\\.ts$',
+          '\\.test\\.tsx?$',
+          '\\.test-d\\.tsx?$',
           '^src/shared/stub\\.ts$',
           '^src/app/main\\.ts$',
         ],
@@ -100,8 +100,8 @@ module.exports = {
     {
       name: 'no-test-imports-in-prod',
       severity: 'error',
-      from: { pathNot: '\\.test(-d)?\\.ts$' },
-      to: { path: '\\.test(-d)?\\.ts$' },
+      from: { pathNot: '\\.test(-d)?\\.tsx?$' },
+      to: { path: '\\.test(-d)?\\.tsx?$' },
     },
     ...Array.from({ length: MAX_DEPTH }, (_, i) => perDepth(i + 1)).flat(),
   ],

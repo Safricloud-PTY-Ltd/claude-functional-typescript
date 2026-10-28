@@ -44,7 +44,9 @@ src/
   architect puts it there; it is still a contract, with JSDoc and a `@stub` marker.
 - New files and new directories are architect decisions. Implementors and test-writers
   don't create them (enforced); they report what they need.
-- Tests live beside the code they cover. Type-level tests use `<fn>.test-d.ts`.
+- Tests live beside the code they cover. Type-level tests use `<fn>.test-d.ts`. The toolchain
+  and the hooks accept `.test.tsx` and `.test-d.tsx` as well; rendering JSX in one needs the
+  project's own `jsx` setting in `tsconfig.json`, which the scaffold doesn't choose.
 
 ## Modules
 

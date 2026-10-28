@@ -4,7 +4,8 @@
 #   main session (no agent_id)  unrestricted: the orchestrator, or a solo architect
 #   architect (a sub-agent)     only inside the territory that names its agent id, and inside
 #                               no other territory
-#   test-writer                 only *.test.ts / *.test-d.ts under src/, beside an existing contract
+#   test-writer                 only *.test.ts(x) / *.test-d.ts(x) under src/, beside an existing
+#                               contract (<base>.ts or <base>.tsx)
 #   implementor                 only existing files under src/ that carry an @stub marker,
 #                               or a file it already holds; never tests, never new files
 #   test-writer, implementor    also inside exactly one territory, whenever any territory exists
@@ -57,15 +58,14 @@ path="$root/$rel"
 [[ "$rel" == src/* ]] || deny "$agent_type may only write under src/ (asked for $rel). Put the need in your report."
 
 is_test=0
-case "$rel" in *.test.ts|*.test-d.ts) is_test=1 ;; esac
+case "$rel" in *.test.ts|*.test-d.ts|*.test.tsx|*.test-d.tsx) is_test=1 ;; esac
 
 if [[ "$agent_type" == test-writer ]]; then
-  (( is_test )) || deny "test-writer writes only *.test.ts and *.test-d.ts files (asked for $rel)."
-  case "$rel" in
-    *.test-d.ts) contract="${rel%.test-d.ts}.ts" ;;
-    *)           contract="${rel%.test.ts}.ts" ;;
-  esac
-  [[ -f "$root/$contract" ]] || deny "no contract at $contract for $rel. Tests go beside an existing contract; report CLARIFY if the brief points elsewhere."
+  (( is_test )) || deny "test-writer writes only *.test.ts(x) and *.test-d.ts(x) files (asked for $rel)."
+  # The contract sits beside the test as <base>.ts or <base>.tsx: a .tsx test may cover a .ts
+  # contract (a hook tested with JSX) or a .tsx one (a component). Strip the test suffix in steps.
+  base="${rel%x}"; base="${base%.ts}"; base="${base%.test-d}"; base="${base%.test}"
+  [[ -f "$root/$base.ts" || -f "$root/$base.tsx" ]] || deny "no contract at $base.ts or $base.tsx for $rel. Tests go beside an existing contract; report CLARIFY if the brief points elsewhere."
 else
   (( is_test )) && deny "implementor does not edit tests (asked for $rel). A test that contradicts the contract is a BLOCKED report."
   [[ -f "$path" ]] || deny "implementor does not create files (asked for $rel). Report the function you need under Needs."

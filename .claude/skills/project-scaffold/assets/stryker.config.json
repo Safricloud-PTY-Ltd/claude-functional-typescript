@@ -6,9 +6,9 @@
   ],
   "dryRunTimeoutMinutes": 30,
   "mutate": [
-    "src/**/*.ts",
-    "!src/**/*.test.ts",
-    "!src/**/*.test-d.ts",
+    "src/**/*.{ts,tsx}",
+    "!src/**/*.test.{ts,tsx}",
+    "!src/**/*.test-d.{ts,tsx}",
     "!src/**/index.ts",
     "!src/**/types.ts",
     "!src/app/**",
