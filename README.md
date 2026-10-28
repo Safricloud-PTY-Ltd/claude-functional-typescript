@@ -152,8 +152,9 @@ committed content, shared with the team.
 
 ## Status
 
-Early and moving. The harness and the standards are in use. The toolchain in
-`project-scaffold/assets/` was run from a fresh bootstrap on Windows on 2026-10-28, which found
-six defects (issue #14); the fixed assets then passed `pnpm check` and coverage over that
-bootstrap. Other platforms haven't been validated. Open work is tracked in
+Early and moving. The harness and the standards are in use. A fresh bootstrap on Windows (a
+downstream project, 2026-10-28) found six defects in the toolchain in
+`project-scaffold/assets/` (issue #14). The fixed assets, copied into a separate scratch
+Windows project, then passed `pnpm check` and coverage. Other platforms, and Stryker, haven't
+been checked against these assets. Open work is tracked in
 [issues](https://github.com/Safricloud-PTY-Ltd/claude-functional-typescript/issues).
