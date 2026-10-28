@@ -43,7 +43,7 @@ still holds; only the way a brief is dispatched changes.
    serial test-writer briefs took 18 minutes (2026-10-21).
 
    ```bash
-   node .claude/skills/codex-subagents/codex-subagent.cjs start test-writer <ws> "<dir>/in/brief.md" "<dir>/in/allowed.txt" "<dir>/run" medium
+   node .claude/skills/codex-subagents/codex-subagent.cjs start test-writer <ws> "<dir>/in/brief.md" "<dir>/in/allowed.txt" "<dir>/run"
    ```
 
    with `run_in_background: true` on that Bash call (`start` blocks until codex exits). Then,
