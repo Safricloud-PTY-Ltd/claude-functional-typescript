@@ -14,7 +14,7 @@
 #
 # Each tool runs from node_modules/.bin when it's there, else through pnpm exec. Not a policy
 # hook, so it fails open: on unparseable input, and without node_modules/.bin (said once per
-# session as context to the agent, exit 0).
+# agent per session as context, exit 0).
 set -u
 
 root="${CLAUDE_PROJECT_DIR:-$PWD}"
@@ -32,8 +32,10 @@ cd "$root" || exit 0
 x() { if [[ -x "node_modules/.bin/$1" ]]; then "node_modules/.bin/$1" "${@:2}"; else pnpm exec "$@"; fi; }
 if [[ ! -d node_modules/.bin ]]; then
   # Without an install, `pnpm exec tsc` is not a typecheck, only noise on every edit. Say so once
-  # per session (SessionStart clears .claude/locks), as context the agent reads with no failure.
-  marker=.claude/locks/check-file-skipped
+  # per agent per session (SessionStart clears .claude/locks; an architect's phase release can
+  # only repeat the notice), as context the agent reads with no failure. Per agent, so a notice
+  # the main session consumed doesn't leave a sub-agent editing unchecked and uninformed.
+  marker=".claude/locks/check-file-skipped-${agent_id:-main}"
   if [[ ! -f "$marker" ]]; then
     mkdir -p .claude/locks && : > "$marker"
     printf '%s\n' '{"hookSpecificOutput":{"hookEventName":"PostToolUse","additionalContext":"check-file: no node_modules/.bin in this project, so typecheck, lint and tests are skipped after edits. Run pnpm install, or report it."}}'

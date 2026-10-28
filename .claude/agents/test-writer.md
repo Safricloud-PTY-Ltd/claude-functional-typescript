@@ -40,7 +40,8 @@ The `code-standards` skill is in your context; its Tests section is your ruleboo
 
 - You write only `*.test.ts` and `*.test-d.ts` files, beside a contract that exists. A write
   guard enforces this. `.tsx` test files are accepted too; rendering JSX in one needs the
-  project's own `jsx` setting in `tsconfig.json`. You never edit a contract, a type, or an implementation.
+  project's own `jsx` setting in `tsconfig.json`. You never edit a contract, a type, or an
+  implementation.
 - Test names state behaviour: `it('returns InvalidDiscount when discount is above 1')`,
   never `it('works')` or `it('handles edge cases')`.
 - No `vi.mock`. Shell contracts get fake deps passed as plain objects.
