@@ -184,14 +184,21 @@ function checkAffected(root, territories, agentId, verb, files) {
 }
 
 // Every file under paths whose working copy, staged copy or untracked state differs from HEAD:
-// what `git add -- paths` or `git commit -- paths` would stage, commit or unstage. The staged
-// set matters: a file another architect staged, whose working copy now matches HEAD, shows in
-// no working-tree diff, yet naming it would overwrite that staged change.
+// what `git add -- paths` or `git commit -- paths` would stage, commit or unstage, as absolute
+// paths. The staged set matters: a file another architect staged, whose working copy now
+// matches HEAD, shows in no working-tree diff, yet naming it would overwrite that staged change.
+// Git prints the paths relative to the repository's top level, which is not the project root
+// when the project sits inside a larger repository (issue #12: a project at <repo>/web was
+// checked as web/web/src/...). No fallback when the top level can't be read: joining onto the
+// project root instead would bring that bug back silently. In a linked worktree the top level
+// is the worktree, so its files fall outside the project and are refused.
 function touched(dir, paths) {
+  const top = gitLines(dir, ['rev-parse', '--show-toplevel'])[0];
+  if (!top) refuse("the guard could not find the repository's top level (`git rev-parse --show-toplevel` printed nothing)");
   const unstaged = gitLines(dir, ['diff', '--name-only', 'HEAD', '--', ...paths]);
   const staged = gitLines(dir, ['diff', '--name-only', '--cached', 'HEAD', '--', ...paths]);
   const untracked = gitLines(dir, ['ls-files', '--full-name', '--others', '--exclude-standard', '--', ...paths]);
-  return [...unstaged, ...staged, ...untracked];
+  return [...unstaged, ...staged, ...untracked].map((f) => path.join(top, f));
 }
 
 // A directory pathspec is checked here but read by git later: a sub-agent running outside the
@@ -210,7 +217,7 @@ function checkAdd(inv, root, territories, agentId) {
   if (bad.length) refuse(`\`git add\` takes explicit paths and no ${bad.join(' ')}: -A, -u, -f, -p and the rest reach past your own files.`);
   if (paths.length === 0) refuse('`git add` needs at least one path.');
   refuseDirectories(inv.dir, paths, 'add');
-  checkAffected(root, territories, agentId, 'add', touched(inv.dir, paths).map((f) => path.join(root, f)));
+  checkAffected(root, territories, agentId, 'add', touched(inv.dir, paths));
 }
 
 function checkCommit(inv, root, territories, agentId) {
@@ -222,7 +229,7 @@ function checkCommit(inv, root, territories, agentId) {
   if (bad.length) refuse(`\`git commit\` takes \`-m <msg> -- <paths>\` and no ${bad.join(' ')}: -a, -i, --amend, --fixup, -C and the rest commit more than the files you name, or rewrite history.`);
   if (paths.length === 0) refuse('`git commit` needs at least one path; with none it commits the whole shared index, other architects\' staged files included.');
   refuseDirectories(inv.dir, paths, 'commit');
-  checkAffected(root, territories, agentId, 'commit', touched(inv.dir, paths).map((f) => path.join(root, f)));
+  checkAffected(root, territories, agentId, 'commit', touched(inv.dir, paths));
 }
 
 // gh that only reads: a read subcommand in any group, a read-only group, `gh auth status`, and

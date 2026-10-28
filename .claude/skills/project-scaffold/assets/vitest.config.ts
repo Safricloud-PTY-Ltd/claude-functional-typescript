@@ -2,14 +2,15 @@ import { defineConfig } from 'vitest/config';
 
 export default defineConfig({
   test: {
-    include: ['src/**/*.test.ts'],
-    typecheck: { enabled: true, include: ['src/**/*.test-d.ts'] },
+    // {ts,tsx}: .tsx tests are accepted (issue #12); rendering JSX needs a jsx setting in tsconfig.
+    include: ['src/**/*.test.{ts,tsx}'],
+    typecheck: { enabled: true, include: ['src/**/*.test-d.{ts,tsx}'] },
     coverage: {
       provider: 'v8',
-      include: ['src/**/*.ts'],
+      include: ['src/**/*.{ts,tsx}'],
       exclude: [
-        'src/**/*.test.ts',
-        'src/**/*.test-d.ts',
+        'src/**/*.test.{ts,tsx}',
+        'src/**/*.test-d.{ts,tsx}',
         // A domain's shared test builders are test code, like *.test.ts.
         'src/**/test-support/**',
         'src/**/index.ts',

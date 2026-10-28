@@ -38,7 +38,13 @@ case "$tier" in ''|default|fast|ultrafast) ;; *) fail "CODEX_REVIEW_TIER is $tie
 # Guarded expansion: bash 3.2 (macOS) treats a plain "${tierflag[@]}" on an empty array as unbound under set -u.
 tierflag=(); [[ -n "$tier" ]] && tierflag=(-c "service_tier=$tier")
 
-root=$(git rev-parse --show-toplevel) || fail "not inside a git repository"
+# The project root is where this script is installed (<project>/.claude/skills/pr-review/), not
+# the repository's top level: a project nested in a larger repository (<repo>/web) installs and
+# reviews from the project directory (issue #12). CLAUDE_PROJECT_DIR can't be used, since it is
+# set for hooks but not for Bash tool commands (measured 2026-10-28). The project's path inside
+# the repository (`web/`, empty at the top level) places the review inside a worktree below.
+root=$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && { pwd -W 2>/dev/null || pwd -P; }) || fail "could not resolve the project root"
+prefix=$(git -C "$root" rev-parse --show-prefix) || fail "$root is not inside a git repository"
 count() {
   gh pr view "$N" --json reviews,comments \
     --jq "[.reviews[].body, .comments[].body] | map(select(startswith(\"<!-- ai-review: $R \"))) | length"
@@ -57,7 +63,7 @@ if [[ -n "$wt" ]]; then
   git -C "$root" worktree prune   # drop records left by an earlier run that was killed
   git -C "$root" fetch -q origin "$head" 2>/dev/null || true
   git -C "$root" -c core.longpaths=true worktree add -q --detach "$wt" "$head" || fail "could not add a worktree at $wt"
-  dir="$wt"
+  dir="${wt}${prefix:+/${prefix%/}}"
   # Always remove the worktree, even on failure. `git worktree remove --force` unregisters it and
   # deletes it; rm -rf catches what a locked file left behind; prune drops any stale record. If the
   # directory still exists afterwards, say so rather than leave it silently.
@@ -72,8 +78,8 @@ if [[ -n "$wt" ]]; then
   # A fresh worktree has no node_modules, so the reviewer could not run vitest. Install from the
   # local store only (no network, no install scripts); node_modules is gitignored, so the tree
   # stays clean. If it fails, the review still runs, from reading alone.
-  (cd "$wt" && pnpm install --frozen-lockfile --offline --ignore-scripts >/dev/null 2>&1) \
-    || echo "request-review: could not install node_modules in $wt; the reviewer will review by reading only" >&2
+  (cd "$dir" && pnpm install --frozen-lockfile --offline --ignore-scripts >/dev/null 2>&1) \
+    || echo "request-review: could not install node_modules in $dir; the reviewer will review by reading only" >&2
 fi
 
 at=$(git -C "$dir" rev-parse HEAD)

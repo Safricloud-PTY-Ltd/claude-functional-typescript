@@ -151,7 +151,7 @@ export default defineConfig(
 
   // Shell adapters convert a foreign, throwing API into Results.
   {
-    files: ['src/**/shell/**/*.ts', 'src/app/**/*.ts', 'src/shared/stub.ts'],
+    files: ['src/**/shell/**/*.{ts,tsx}', 'src/app/**/*.{ts,tsx}', 'src/shared/stub.ts'],
     rules: {
       'functional/no-throw-statements': 'off',
       'functional/no-try-statements': 'off',
@@ -160,7 +160,7 @@ export default defineConfig(
 
   // Tests: describe/it blocks are long by nature; fixtures are literal.
   {
-    files: ['**/*.test.ts', '**/*.test-d.ts'],
+    files: ['**/*.test.{ts,tsx}', '**/*.test-d.{ts,tsx}'],
     rules: {
       'max-lines': 'off',
       'max-lines-per-function': 'off',
