@@ -28,7 +28,10 @@ const perDepth = (n) => [
     name: `no-own-barrel-${n}`,
     comment: 'Inside a module, import relatively; the barrel is for outsiders',
     severity: 'error',
-    from: { path: `^(${dirs(n)})/(?!index\\.ts$)` },
+    // The module's own index.test(-d).ts is the one insider that imports the barrel: it is the
+    // acceptance test code-standards requires. Exempted in the lookahead, at the module's own
+    // level only, so a nested module's test still can't reach a parent barrel (issue #14).
+    from: { path: `^(${dirs(n)})/(?!index\\.ts$|index\\.test(-d)?\\.tsx?$)` },
     to: { path: '^$1/index\\.ts$' },
   },
   {

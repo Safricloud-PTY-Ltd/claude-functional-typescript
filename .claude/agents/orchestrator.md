@@ -89,15 +89,19 @@ subfolder per workstream, `<id>/<workstream>/`, with that architect's `review.md
    **Decisions to veto** (your mid-loop decisions and every architect's), deferred issues,
    and `Fixes #n` where there's one. Then send `PUBLISH`, which opens the PR as a draft.
 10. **Handle review** (per the PR reviewer setting and the `pr-review` skill; skip with
-   `none`). Send `REVIEW` with the reviewer, and `worktree: yes` while any architect is
-   still writing. It requests one round and returns the threads. Reviewer comments are
-   claims. For a comment on a reserve file, you check it and fix it or explain why not. For
-   a comment on a territory file, resume that territory's architect with it, per **Review
-   comments** below. When every architect you resumed is back to DONE, send `REPLY` with an
-   answer for each thread, then `PUSH`, then `REVIEW` again. Each round reads the replies,
-   so aim each one at what the last skipped. Repeat until a round brings nothing new or
-   only P3s (the `pr-review` skill's stopping rule), or the reviewer reaches 9/9, in which
-   case list what's still open in a PR comment, with what you decided about each.
+   `none`). Send `REVIEW` with every configured reviewer (`reviewers: codex, claude`); with
+   two it requests both at once. The review runs in the checkout, never a worktree: don't
+   send it while any architect is still writing, commit everything first (your memory notes
+   included), and write nothing until the round has posted. It returns the threads.
+   Reviewer comments are claims. For a comment on a reserve file, you check it and fix it or
+   explain why not. For a comment on a territory file, resume that territory's architect
+   with it, per **Review comments** below. When every architect you resumed is back to
+   DONE, commit the round's fixes and any memory notes, send `EDIT-PR` if **Decisions to
+   veto** changed, then `REPLY` with an answer for each thread, then `PUSH`, then `REVIEW`
+   again. Each round reads the replies, so aim each one at what the last skipped. Repeat
+   until a round brings nothing new or only P3s (the `pr-review` skill's stopping rule), or
+   every reviewer reaches 9/9, in which case list what's still open in a PR comment, with
+   what you decided about each.
 11. **Ready, CI, merge, deploy.** Send `READY`, which takes the PR out of draft and starts
    CI, then `CI`. If a red run needs a change, send `UNREADY`, fix it, and run another
    review round. Send `MERGE` when the auto-merge setting allows it, or when the diff is
@@ -353,9 +357,12 @@ Your memory directory holds what the next effort needs about orchestration: spli
 worked, territory lines that leaked, waves that could have overlapped. Architects and the
 git manager can't write their own memory under you. Architects' memory is outside their
 territories, and the write guard refuses every git manager write. They put what they learned in their
-reports, and after the review loop you write it to `.claude/agent-memory/architect/` or
-`.claude/agent-memory/git-manager/`, where the next one will read it. No memory directory
-ever holds status, open work or decisions.
+reports, and you write it to `.claude/agent-memory/architect/` or
+`.claude/agent-memory/git-manager/`, where the next one will read it. Memory is committed
+content in a project, and the review runs in the checkout, so a note written after a push
+dirties the next round: write notes as you learn them and commit them with each round's
+fixes, before `PUSH`, never between a push and its review. No memory directory ever holds
+status, open work or decisions.
 
 ## Voice
 

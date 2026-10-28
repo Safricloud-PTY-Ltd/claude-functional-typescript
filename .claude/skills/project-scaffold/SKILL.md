@@ -56,10 +56,14 @@ package versions (see "Versions" below); copy them as they are, then adjust with
    pnpm exec lefthook install
    ```
 
-   Add `drizzle-orm drizzle-zod` and `-D drizzle-kit` when the project has a database.
+   Add `drizzle-orm drizzle-zod` and `-D drizzle-kit` when the project has a database, and
+   add all three to `knip.json` `ignoreDependencies` until code imports them, for the reason
+   `neverthrow` and `zod` are there. `esbuild`, which drizzle-kit pulls in, is already in
+   `allowBuilds` as `false` (its binary is an optional dependency; the script only validates).
 
-3. Run `pnpm check` and `pnpm coverage`. On the starter tree both pass, with one test file
-   (`src/shared/errors.test.ts`) and an empty domain list.
+3. Run `pnpm check` and `pnpm coverage`. On the starter tree both pass, with two test files
+   (`src/shared/errors.test.ts`, and `src/shared/index.test.ts`, the barrel's acceptance test
+   that every module has) and an empty domain list.
    If a step fails here, the environment differs from the validated one; fix the environment
    before touching the configs.
 4. Fill in `CLAUDE.md`'s project paragraph and the `build`, `e2e`, and deploy commands.
@@ -119,6 +123,16 @@ files as text, fails in Stryker's instrumented sandbox and nowhere else: make su
 themselves under mutation, or keep them out of the run with a Stryker-only vitest config
 (`vitest.configFile` in `stryker.config.json`).
 
+Re-validated downstream on 2026-10-28 (genesys-alerts-manager, a fresh bootstrap) with eslint
+10.13, typescript-eslint 8.72, eslint-plugin-jsdoc 65.4.2 (adds `jsdoc/escape-inline-tags`;
+the negative cases above all still refused), dependency-cruiser 18.7, knip 6.43, lefthook 2.2,
+Stryker 10.1, pnpm 11.25. That bootstrap found six asset defects fixed in issue #14 (the
+barrel acceptance test refused by `no-own-barrel`, `eslint.config.js` past its own
+`max-lines`, two files prettier rejected, the vendored `.claude/` failing `format:check`,
+`.pnpm-store/` untracked). Measured here the same day: with `lefthook.yml` present, knip
+6.43.0 still reports `lefthook` as an unused devDependency when it leaves
+`ignoreDependencies`, so it stays there.
+
 When a tool's major version changes, re-run every script, re-check the negative cases (a
 `let`, a nested named function, a `throw` in core, a `core/` → `shell/` import, a cross-domain
 internal import), and update this section.
@@ -144,5 +158,7 @@ assets/
   .github/workflows/nightly.yml  mutation testing
   src/shared/{index,stub,brand,errors}.ts   the primitives the standards refer to
   src/shared/errors.test.ts  keeps coverage green on the starter tree
+  src/shared/index.test.ts   the barrel's acceptance test; also pins that a module's own
+                             index.test.ts may import its barrel (no-own-barrel exempts it)
   src/app/main.ts            composition-root placeholder
 ```

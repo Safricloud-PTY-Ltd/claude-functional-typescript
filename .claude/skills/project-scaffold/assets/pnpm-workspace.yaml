@@ -1,9 +1,13 @@
 # Supply-chain settings.
 # allowBuilds: pnpm refuses to run install scripts unless the package is listed here.
 #   lefthook installs the git hooks; unrs-resolver fetches the resolver's native binding.
+#   esbuild (pulled in by drizzle-kit and vitest) is false: its binary comes from the optional
+#   platform package and the script only validates it; without an entry, pnpm 11 writes
+#   "esbuild: set this to true or false" here on the next add (measured 2026-10-28).
 # minimumReleaseAge (minutes): refuse versions published less than a day ago, which is
 #   the window most npm worm-style attacks live in.
 allowBuilds:
+  esbuild: false
   lefthook: true
   unrs-resolver: true
 minimumReleaseAge: 1440

@@ -62,26 +62,30 @@ Don't guess.
   `git merge --no-edit origin/main`. Merge rather than rebase, because a rebase rewrites
   commits that architects are building on in the same checkout. A conflict is BLOCKED,
   with the files: run `git merge --abort` and leave the resolution to the main session.
-- **ARCHIVE**. Run `git mv contributions/in-progress/<id> contributions/complete/<id>`,
-  then commit with `-- contributions/`. This is the last commit that touches
-  `contributions/`.
+- **ARCHIVE**. Run `mkdir -p contributions/complete` (the one thing you create outside git:
+  on a repo's first effort the directory doesn't exist, and `git mv` into it exits 128), then
+  `git mv contributions/in-progress/<id> contributions/complete/<id>`, then commit with
+  `-- contributions/`. This is the last commit that touches `contributions/`.
 - **PUBLISH** `title:` and `body-file:`. Run `git push -u origin <branch>`, then
   `gh pr create --draft --title <title> --body-file <file>`. A PR stays a draft until its
   review loop is done, because CI skips drafts. Report the PR's URL and number from gh's
   output.
-- **REVIEW** `reviewer: codex|claude`, and `worktree: yes|no`. This requests one round,
-  per the `pr-review` skill, and collects what it found. Run
-  `bash .claude/skills/pr-review/request-review.sh <n> <reviewer>` in the background. Add
-  `--worktree <scratchpad>/rw<round>` when the job says `worktree: yes`, which it
-  does whenever agents are still writing in the checkout. Wait for the script to exit. A
-  non-zero exit is FAILED, with its message (exit 3 means the reviewer reached 9/9). Then
-  collect every unresolved thread and the new review's body: path, line, author, body, and
-  the thread and comment ids (`gh pr view --comments`, or the GraphQL `reviewThreads` query
-  through `gh api graphql`). Report them verbatim, with the round's verdict line. Reviewer
-  comments are claims. The main session and its architects judge them. You don't. Before you
-  report, confirm the worktree is gone: `git worktree list` shows only the main checkout and
-  the directory no longer exists. If either is not true, remove it
-  (`git worktree remove --force <dir>`, then `git worktree prune`) and say so in the report.
+- **EDIT-PR** `body-file:`, and optionally `title:`. Run `gh pr edit <n> --body-file <file>`
+  (and `--title`), then report the body back from `gh pr view <n> --json body` (its first
+  lines and its length), so the main session sees what landed. The main session sends this
+  whenever **Decisions to veto** changed, before the next `REVIEW`, which reads it.
+- **REVIEW** `reviewers: codex|claude|codex, claude`. This requests one round, per the
+  `pr-review` skill, and collects what it found. The review runs in the shared checkout,
+  never a worktree: first confirm `git status --porcelain` prints nothing and `HEAD` is the
+  PR's head; if not, the job is BLOCKED with the paths (never stash, never discard). Then
+  run `bash .claude/skills/pr-review/request-review.sh <n> <reviewer>` once per reviewer
+  named, all at the same time, each in the background, and wait for every one to exit. A
+  non-zero exit from any is FAILED, naming the reviewer and its message (exit 3 means that
+  reviewer reached 9/9). Then collect every unresolved thread and each new review's body:
+  path, line, author, body, and the thread and comment ids (`gh pr view --comments`, or the
+  GraphQL `reviewThreads` query through `gh api graphql`). Report them verbatim, with each
+  reviewer's verdict line. Reviewer comments are claims. The main session and its
+  architects judge them. You don't.
 - **READY**. The review loop is done. Run `gh pr ready <n>`, which starts CI, and report
   it. If a red run needs a change, the main session sends `UNREADY`
   (`gh pr ready <n> --undo`), and the change goes through another review round.
@@ -154,14 +158,9 @@ These were found the hard way, in an effort with thirteen architects.
   hangs mid-step, call `gh api -X POST repos/<o>/<r>/actions/runs/<id>/force-cancel`.
 - Reply to every review thread before you ask for the next pass. The reviewer reads the
   replies, and a thread with no answer comes back.
-- Don't run a reviewer that needs a clean checkout in the shared one. Make a detached
-  worktree at the PR head in the scratchpad (`git worktree add --detach <dir> <sha>`). When
-  the review is done, delete it and run `git worktree prune`.
-- A worktree is cleaned up the moment it's no longer needed, in every repository you touched:
-  `git worktree list` shows only the main checkout and the directory is gone, after every job
-  and before MERGE. `request-review.sh` removes its own on any exit, but a killed run can't, so
-  check rather than assume. Keep worktree paths short (`<scratchpad>/rw<round>`): on Windows a
-  long scratchpad path plus the repo's deepest files passes the 260-character limit.
+- A reviewer runs in the shared checkout and needs it clean at the PR head. Never make a
+  worktree for it (owner's rule, 2026-10-28): the main session commits and pushes everything
+  before the round, and nothing writes until it posts. A dirty tree is FAILED with the paths.
 - `gh api repos/<o>/<r>/pulls/<n>/reviews` returns 30 at a time, and every inline batch is
   its own review, so a busy PR passes 30 quickly. Use `--paginate`, or the review id.
 - A reviewer's own post is best-effort: an unattended session can refuse its posting
@@ -169,10 +168,8 @@ These were found the hard way, in an effort with thirteen architects.
   the marker counts) through `--input <file>`, and check first that the body matches the
   reviewer's text byte for byte.
 - The push rule checks a command's shape, not its destination. Run from inside another
-  repo's worktree, a push of that repo's branch passes. So a job that touches another
+  repo's checkout, a push of that repo's branch passes. So a job that touches another
   repository must state its authority, and you say in the report that it did.
-- Before you trust a report of leftover files from a reviewer that ran in a worktree, look
-  in the shared checkout. They usually went with the worktree.
 
 ## Report
 

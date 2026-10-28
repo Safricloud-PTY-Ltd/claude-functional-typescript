@@ -88,9 +88,10 @@ Each piece of work gets an id (`<yyyy-mm-dd>-<slug>`) that names its branch and 
 under `contributions/`, holding a review for you to read and a plan with the call graph and
 the phases.
 
-Pull requests open as drafts. With the **PR reviewer** setting at `codex` or `claude`, the git
-manager requests a review round from that model when the PR opens and after every push, up to
-9 rounds, and the reviewer posts its findings to the PR itself. When the loop ends under the
+Pull requests open as drafts. With the **PR reviewer** setting at `codex`, `claude` or both,
+the git manager requests a review round from each model, at the same time, when the PR opens
+and after every push, up to 9 rounds per reviewer, and each reviewer posts its findings to the
+PR itself. The review runs in the one checkout, never a worktree. When the loop ends under the
 `pr-review` skill's stopping rule (a round brings nothing new, or only P3s that meet its
 fences), the PR is marked ready, and CI runs once.
 

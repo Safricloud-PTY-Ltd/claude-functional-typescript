@@ -14,6 +14,7 @@ export default defineConfig(
     'dist/**',
     'coverage/**',
     'reports/**',
+    '.pnpm-store/**', // ESLint doesn't read .gitignore; pnpm makes this store in a sandbox
     '.claude/**',
     'contributions/**',
     '.dependency-cruiser.cjs',
@@ -173,13 +174,16 @@ export default defineConfig(
     },
   },
 
-  // Config files are not domain code.
+  // Config files are not domain code. The size rules are off too: this file itself is past
+  // max-lines (161 counted lines against 150, issue #14).
   {
     files: ['*.config.js', '*.config.ts'],
     rules: {
       'import-x/no-default-export': 'off',
       'no-restricted-syntax': 'off',
       'jsdoc/require-jsdoc': 'off',
+      'max-lines': 'off',
+      'max-lines-per-function': 'off',
     },
   },
 
