@@ -5,8 +5,11 @@
 // brief's allowed list and the live territories. It never reverts anything; the architect decides.
 //
 //   node codex-subagent.cjs start  <test-writer|implementor> <workstream> <brief.md> <allowed.txt> <outdir> [effort]
-//   node codex-subagent.cjs wait   <outdir> [seconds=540]     prints the report when done; exit 3 if still running
+//   node codex-subagent.cjs wait   <outdir> [seconds=540]     prints the report when done; exit 3 if still running,
+//                                                             exit 4 if the run's process died without finishing
 //   node codex-subagent.cjs resume <outdir> <message.md>      continues the same Codex session (answers to NEEDS)
+//
+// start and resume block until codex exits; run them with the Bash tool's run_in_background.
 //
 // <allowed.txt>: one repo-relative path per line, the only files the brief may create or edit.
 // <outdir>: a fresh directory under the scratchpad, one per brief (e.g. .../scratchpad/runtime/codex/I-runtime-3.2).
@@ -14,11 +17,22 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const crypto = require('node:crypto');
-const { spawn, spawnSync, execFileSync } = require('node:child_process');
+const { spawnSync, execFileSync } = require('node:child_process');
 
 const ROOT = path.resolve(__dirname, '..', '..', '..');
-// The model is CLAUDE.md's choice; override per machine with CODEX_SUBAGENT_MODEL.
-const MODEL = process.env.CODEX_SUBAGENT_MODEL || 'gpt-6-astra';
+// Per-role model, effort and speed from .claude/settings.json `env` (CLAUDE.md, Models).
+// CODEX_SUBAGENT_MODEL is the old single knob, read only when the role's _MODEL is empty.
+const TIERS = ['default', 'fast', 'ultrafast'];
+const roleConfig = (role) => {
+  const v = (k) => (process.env[`CODEX_${role.toUpperCase().replace(/-/g, '_')}_${k}`] || '').trim();
+  return { model: v('MODEL') || process.env.CODEX_SUBAGENT_MODEL || 'gpt-6-astra', effort: v('EFFORT') || 'medium', tier: v('TIER') };
+};
+const ALLOWED_MODELS = (process.env.CODEX_ALLOWED_MODELS || '').split(',').map((s) => s.trim()).filter(Boolean);
+// Codex accepts an unknown service_tier silently (measured 2026-10-28), so the check is here.
+const checkConfig = ({ model, tier }) => {
+  if (ALLOWED_MODELS.length && !ALLOWED_MODELS.includes(model)) die(`model ${model} isn't allowed here; CODEX_ALLOWED_MODELS (.claude/settings.json env) is ${ALLOWED_MODELS.join(', ')}`);
+  if (tier && !TIERS.includes(tier)) die(`speed ${tier} isn't one of ${TIERS.join(', ')} (the role's *_TIER in .claude/settings.json env)`);
+};
 
 // Codex's JS entry, run with this Node so no shell has to quote paths that contain spaces.
 const findCodexJs = () => {
@@ -70,25 +84,28 @@ function buildPrompt(role, workstream, brief, allowed) {
   ].join('\n');
 }
 
-const codexArgs = (effort, lastFile) => [
+const codexArgs = (meta, lastFile) => [
   // `exec resume` accepts neither -s nor -C, so the sandbox is a config override and the working
   // directory comes from the spawn's cwd; both forms then work for start and resume alike.
-  CODEX_JS, 'exec', '--json', '-m', MODEL, '-c', `model_reasoning_effort=${effort}`,
+  CODEX_JS, 'exec', '--json', '-m', meta.model, '-c', `model_reasoning_effort=${meta.effort}`,
+  ...(meta.tier ? ['-c', `service_tier=${meta.tier}`] : []),
   '-c', 'sandbox_mode=workspace-write',
   '-c', 'shell_environment_policy.inherit=all', '-c', 'shell_environment_policy.ignore_default_excludes=true',
   '-o', lastFile,
 ];
 
-// Detached runner: runs codex synchronously, then writes the exit code and the report.
+// Runs codex synchronously, then writes the exit code and the report.
 function run(outdir, mode) {
-  const meta = JSON.parse(read(path.join(outdir, 'meta.json')));
+  const saved = JSON.parse(read(path.join(outdir, 'meta.json')));
+  // Runs started before the per-role settings existed carry no model or tier; fill from the role.
+  const meta = { ...roleConfig(saved.role), ...saved };
   const n = mode === 'resume' ? meta.turns : 0;
   const prompt = mode === 'resume' ? read(path.join(outdir, `message-${n}.md`)) : read(path.join(outdir, 'prompt.md'));
   const last = path.join(outdir, `last-${n}.md`);
-  let args = codexArgs(meta.effort, last);
+  let args = codexArgs(meta, last);
   if (mode === 'resume') args = [CODEX_JS, 'exec', 'resume', meta.threadId, ...args.slice(2)];
   const r = spawnSync(process.execPath, [...args, '-'], {
-    input: prompt, cwd: ROOT, maxBuffer: 1 << 28, encoding: 'utf8', windowsHide: true,
+    input: prompt, cwd: ROOT, maxBuffer: 1 << 28, encoding: 'utf8',
   });
   fs.writeFileSync(path.join(outdir, `events-${n}.jsonl`), r.stdout || '');
   fs.writeFileSync(path.join(outdir, `stderr-${n}.log`), (r.stderr || '') + (r.error ? `\n${r.error}` : ''));
@@ -124,7 +141,7 @@ function report(outdir, meta, n, status) {
   });
   const lastFile = path.join(outdir, `last-${n}.md`);
   return [
-    `# ${meta.briefId} (${meta.role}, ${MODEL}) — turn ${n}, codex exit ${status}`,
+    `# ${meta.briefId} (${meta.role}, ${meta.model}, ${meta.effort}${meta.tier ? `, ${meta.tier}` : ''}) — turn ${n}, codex exit ${status}`,
     `Thread: ${meta.threadId || 'unknown'}`,
     '',
     '## Files changed since the brief started',
@@ -135,49 +152,67 @@ function report(outdir, meta, n, status) {
   ].join('\n');
 }
 
+// Runs codex in this process. The architect starts `start` and `resume` with the Bash tool's
+// run_in_background, as a shell script would, so codex.exe shares Claude Code's own console.
+// The earlier detached runner had no console to hand down (Windows ignores CREATE_NO_WINDOW
+// next to DETACHED_PROCESS), and a windowsHide child gets a console of its own rather than
+// sharing one. With the detached runner a console window flashed on every brief on Windows;
+// with this foreground launcher a real brief ran with no window (owner-observed, 2026-10-28).
+// The pid lets `wait` tell a killed run from a slow one.
 function launch(outdir, mode) {
-  const child = spawn(process.execPath, [__filename, 'run', outdir, mode], { detached: true, stdio: 'ignore', cwd: ROOT, windowsHide: true });
-  child.unref();
+  const metaFile = path.join(outdir, 'meta.json');
+  fs.writeFileSync(metaFile, JSON.stringify({ ...JSON.parse(read(metaFile)), pid: process.pid }, null, 2));
+  run(outdir, mode);
 }
+
+const alive = (pid) => { try { process.kill(pid, 0); return true; } catch { return false; } };
 
 function wait(outdir, seconds) {
   const meta = JSON.parse(read(path.join(outdir, 'meta.json')));
   const exitFile = path.join(outdir, `exit-${meta.turns}`);
   const deadline = Date.now() + seconds * 1000;
   while (!fs.existsSync(exitFile) && Date.now() < deadline) Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 5000);
-  if (!fs.existsSync(exitFile)) { process.stdout.write(`${meta.briefId}: still running (turn ${meta.turns})\n`); process.exit(3); }
+  if (!fs.existsSync(exitFile)) {
+    if (meta.pid && !alive(meta.pid)) { process.stdout.write(`${meta.briefId}: died (turn ${meta.turns}; pid ${meta.pid} gone, no exit file). Its Bash task was killed; start a fresh brief or resume if it has a thread id.\n`); process.exit(4); }
+    process.stdout.write(`${meta.briefId}: still running (turn ${meta.turns})\n`); process.exit(3);
+  }
   process.stdout.write(read(path.join(outdir, 'report.md')) + '\n');
 }
 
 const [cmd, ...a] = process.argv.slice(2);
 if (cmd === 'start') {
-  const [role, workstream, briefFile, allowedFile, outdir, effort = 'medium'] = a;
+  const [role, workstream, briefFile, allowedFile, outdir, effortArg] = a;
   if (!['test-writer', 'implementor'].includes(role) || !outdir) die('usage: start <test-writer|implementor> <workstream> <brief.md> <allowed.txt> <outdir> [effort]');
   if (!CODEX_JS) die('codex CLI not found (npm i -g @openai/codex, or set CODEX_JS to its bin/codex.js)');
+  // The role's settings, with the brief's own effort as a one-off override. Checked before any
+  // directory exists, so a refusal leaves nothing behind.
+  const cfg = roleConfig(role);
+  const { model, tier } = cfg;
+  const effort = effortArg || cfg.effort;
+  checkConfig({ model, tier });
   if (fs.existsSync(path.join(outdir, 'meta.json'))) die(`${outdir} already holds a brief; use a fresh directory or resume`);
   fs.mkdirSync(outdir, { recursive: true });
   const brief = read(briefFile);
   const allowed = read(allowedFile).split(/\r?\n/).map((s) => s.trim().replace(/\\/g, '/')).filter(Boolean);
   const briefId = (brief.match(/Brief\s+([TI]-[\w.-]+)/) || [])[1] || path.basename(outdir);
-  fs.writeFileSync(path.join(outdir, 'meta.json'), JSON.stringify({ briefId, role, workstream, effort, allowed, turns: 0 }, null, 2));
+  fs.writeFileSync(path.join(outdir, 'meta.json'), JSON.stringify({ briefId, role, workstream, model, effort, tier, allowed, turns: 0 }, null, 2));
   fs.writeFileSync(path.join(outdir, 'before.json'), JSON.stringify(snapshot()));
   fs.writeFileSync(path.join(outdir, 'prompt.md'), buildPrompt(role, workstream, brief, allowed));
+  process.stdout.write(`${briefId}: started on ${model} (${effort}${tier ? `, ${tier}` : ''}); wait with: node ${path.relative(ROOT, __filename)} wait "${outdir}"\n`);
   launch(outdir, 'start');
-  process.stdout.write(`${briefId}: started on ${MODEL} (${effort}); wait with: node ${path.relative(ROOT, __filename)} wait "${outdir}"\n`);
 } else if (cmd === 'resume') {
   const [outdir, messageFile] = a;
   const meta = JSON.parse(read(path.join(outdir, 'meta.json')));
-  if (!fs.existsSync(path.join(outdir, `exit-${meta.turns}`))) die(`${meta.briefId} is still running`);
+  if (!fs.existsSync(path.join(outdir, `exit-${meta.turns}`)) && !(meta.pid && !alive(meta.pid))) die(`${meta.briefId} is still running`);
   if (!meta.threadId) die(`${meta.briefId} has no Codex thread id to resume; start a fresh brief`);
+  checkConfig({ ...roleConfig(meta.role), ...meta });
   meta.turns += 1;
   fs.writeFileSync(path.join(outdir, `message-${meta.turns}.md`), read(messageFile));
   fs.writeFileSync(path.join(outdir, 'meta.json'), JSON.stringify(meta, null, 2));
-  launch(outdir, 'resume');
   process.stdout.write(`${meta.briefId}: resumed (turn ${meta.turns})\n`);
+  launch(outdir, 'resume');
 } else if (cmd === 'wait') {
   wait(a[0], Number(a[1] || 540));
-} else if (cmd === 'run') {
-  run(a[0], a[1]);
 } else {
   die('usage: start | wait | resume (see the header of this file)');
 }

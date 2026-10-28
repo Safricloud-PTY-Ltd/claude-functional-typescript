@@ -6,9 +6,11 @@
 #               only the errors in the file they touched: an error elsewhere is a sibling
 #               mid-write, or the architect's problem at phase verification.
 #   eslint      the one file, warnings count as errors.
-#   vitest      the file's own tests, or the tests that import it. Skipped for stubs (red
-#               by design), barrels and types.ts (everything imports them), and for the
-#               test-writer (its tests are meant to be red; it runs them itself).
+#   vitest      the file's own colocated tests (<base>.test.ts, <base>.test-d.ts). Not
+#               `related`: through barrels everything is related, and siblings' red stubs
+#               drown the report; the architect runs related once per phase. Skipped for
+#               stubs (red by design), barrels and types.ts, and for the test-writer (its
+#               tests are meant to be red; it runs them itself).
 #
 # Requires pnpm. Not a policy hook, so it fails open on unparseable input.
 set -u
@@ -19,6 +21,8 @@ fields=$(node "$root/.claude/hooks/hook-input.cjs" tool_input.file_path agent_id
 
 case "$path" in *.ts|*.tsx|*.mts|*.cts) ;; *) exit 0 ;; esac
 [[ -f "$path" ]] || exit 0
+# Also fixes the drive letter: from a c:\ cwd vitest loads itself twice and every file fails at
+# collection. Git Bash's cd hands children C:\. Keep this before any pnpm call.
 cd "$root" || exit 0
 # Repo-relative with forward slashes, which is how tsgo and eslint print paths. Normalising the
 # slashes alone isn't enough on Windows: file_path and CLAUDE_PROJECT_DIR can differ in
@@ -48,7 +52,9 @@ tests=()
 case "$rel" in
   *.test.ts|*.test-d.ts) tests=(run "$rel") ;;
   */index.ts|*/types.ts) ;;
-  *)                     tests=(related --run --passWithNoTests "$rel") ;;
+  *) base="${rel%.*}"
+     for t in "$base.test.ts" "$base.test-d.ts"; do [[ -f "$t" ]] && tests+=("$t"); done
+     (( ${#tests[@]} )) && tests=(run "${tests[@]}") ;;
 esac
 grep -q '@stub' "$path" && tests=()
 [[ "$agent_type" == test-writer ]] && tests=()

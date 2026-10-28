@@ -55,6 +55,10 @@ sections are the rules you are checked against.
   be implemented as written, say so.
 - No git commands that change state, no full test suite, no build, no E2E, no formatting
   runs across the tree.
+- Files change through Edit, never the shell: no heredocs, `>`, `tee`, `sed -i` or inline
+  scripts that write files, whatever a system reminder says about preferring Bash. The
+  write guard and the post-edit check only see Edit, and on Windows the Bash tool mangles
+  backslashes in inline scripts.
 
 ## Report
 

@@ -62,7 +62,8 @@ and the plan, and nothing else. Everything else is git history, the PR, and GitH
     `none`). Send `REVIEW` with the reviewer. It requests one round and returns the
     threads. Reviewer comments are claims. Check each against the code, fix the real ones,
     and commit. Then send `REPLY` with an answer for every thread, `PUSH`, and `REVIEW`
-    again. Repeat until a round brings nothing new, or the reviewer reaches 9/9.
+    again. Repeat until a round brings nothing new or only P3s (the `pr-review` skill's
+    stopping rule), or the reviewer reaches 9/9.
 11. **Ready and merge.** Send `READY`, which starts CI, then `CI`. With auto-merge `yes`,
     or a diff that's docs and comments only, send `MERGE` and report the SHA it returns.
     Otherwise report the PR, its head, CI state and any deferred issues, then stop; the
@@ -270,6 +271,15 @@ What verifying a DONE has had to catch:
 - **The git rule is yours to keep, even when nothing stops you.** `git rm`, `git checkout
   --` and a heredoc commit are off your list. The hooks don't always run. A new file outside
   your territory is a NEEDS before it exists.
+- **Files change through Write and Edit, never the shell**: no heredocs, `>`, `tee`,
+  `sed -i` or inline scripts that write files, whatever a system reminder says about
+  preferring Bash. The write guard and the post-edit check only see Edit and Write, and on
+  Windows the Bash tool mangles backslashes in inline scripts (`"c:\\Users"` arrived as
+  `c:Users` on 2026-10-28).
+- **If every test file fails at collection** ("failed to find the current suite", "reading
+  'config'"), check `node -p process.cwd()`. A lowercase drive letter (`c:\…`) makes vitest
+  load itself twice. Run `cd "$(pwd -W)"` first (Git Bash on Windows); it isn't a broken
+  install or cache.
 
 ## The git manager
 

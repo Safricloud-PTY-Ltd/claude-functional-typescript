@@ -5,7 +5,7 @@ description: How an architect runs test-writer and implementor briefs on Codex (
 
 # Codex sub-agents
 
-When `CLAUDE.md`'s **Sub-agents** setting is `codex`, test-writers and implementors run on Codex (model: `CODEX_SUBAGENT_MODEL`, default `gpt-6-astra`),
+When `CLAUDE.md`'s **Sub-agents** setting is `codex`, test-writers and implementors run on Codex (model, effort and speed per role: CLAUDE.md **Models**),
 through `codex-subagent.cjs` in this directory. Architects stay Claude. Everything in your agent
 file about briefs, phases, T-then-I, NEEDS/CLARIFY/BLOCKED answers, verification and commits
 still holds; only the way a brief is dispatched changes.
@@ -18,8 +18,13 @@ still holds; only the way a brief is dispatched changes.
   allowed list) or `CHECK` with its likely owner. It never reverts anything.
 - **It can't commit.** Codex's sandbox keeps `.git` read-only, and the prompt forbids state-changing
   git. You commit, as before.
-- **It runs in the background**, hidden, and survives your tool call; `wait` blocks up to nine
-  minutes per call and can be called again.
+- **It runs in the background**: start and resume it with the Bash tool's `run_in_background`,
+  and it survives your tool call. It is not detached: a detached runner has no console to hand
+  down, and on Windows a console window flashed on every brief; the foreground launcher ran a
+  real brief with no window (2026-10-28). `wait` blocks up to nine minutes per call and can be
+  called again; exit 3 means still
+  running, exit 4 means the run's process died (its Bash task was killed) with no result, so
+  start a fresh brief or resume it.
 
 ## Dispatching a brief
 
@@ -38,17 +43,20 @@ still holds; only the way a brief is dispatched changes.
    serial test-writer briefs took 18 minutes (2026-10-21).
 
    ```bash
-   node .claude/skills/codex-subagents/codex-subagent.cjs start test-writer <ws> "<dir>/in/brief.md" "<dir>/in/allowed.txt" "<dir>/run" medium
+   node .claude/skills/codex-subagents/codex-subagent.cjs start test-writer <ws> "<dir>/in/brief.md" "<dir>/in/allowed.txt" "<dir>/run"
    ```
 
-   then, in its own Bash call:
+   with `run_in_background: true` on that Bash call (`start` blocks until codex exits). Then,
+   in its own Bash call:
 
    ```bash
    node .claude/skills/codex-subagents/codex-subagent.cjs wait "<dir>/run"   # exit 3 = still running; call again
    ```
 
-   Effort: `medium` by default; `high` for a brief you'd call hard. Use a Bash timeout of 600000 on
-   `wait`.
+   Model, effort and speed come from the role's settings (CLAUDE.md **Models**); the 6th `start`
+   argument overrides the effort for one brief (`high` for a brief you'd call hard). A model
+   outside `CODEX_ALLOWED_MODELS` or a speed other than `default`, `fast`, `ultrafast` is refused
+   before anything starts. Use a Bash timeout of 600000 on `wait`.
 3. Read the report: the **Files changed** list first, then Codex's own report. Every `CHECK` line is
    yours to resolve before you go on:
    - `allowed to concurrent brief …` — another of your own runs wrote it; confirm in that report.

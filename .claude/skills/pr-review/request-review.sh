@@ -23,6 +23,21 @@ fi
 
 fail() { echo "request-review: $1" >&2; exit "${2:-1}"; }
 
+# Model, effort and speed per role come from .claude/settings.json `env` (CLAUDE.md, Models).
+# Checked before any git or gh work, so a config mistake fails first and costs nothing.
+case "$R" in
+  codex)  model="${CODEX_REVIEW_MODEL:-gpt-6-astra}"; effort="${CODEX_REVIEW_EFFORT:-medium}"; tier="${CODEX_REVIEW_TIER:-}" ;;
+  claude) model="${CLAUDE_REVIEW_MODEL:-opus}"; effort="${CLAUDE_REVIEW_EFFORT:-high}"; tier="" ;;
+esac
+if [[ "$R" == codex && -n "${CODEX_ALLOWED_MODELS:-}" ]]; then
+  [[ ",${CODEX_ALLOWED_MODELS// /}," == *",$model,"* ]] \
+    || fail "codex model $model isn't allowed here; CODEX_ALLOWED_MODELS (.claude/settings.json env) is $CODEX_ALLOWED_MODELS"
+fi
+# Codex accepts an unknown service_tier silently (measured 2026-10-28); an unknown effort it rejects itself.
+case "$tier" in ''|default|fast|ultrafast) ;; *) fail "CODEX_REVIEW_TIER is $tier; Codex accepts any value silently, so only default, fast and ultrafast are allowed here" ;; esac
+# Guarded expansion: bash 3.2 (macOS) treats a plain "${tierflag[@]}" on an empty array as unbound under set -u.
+tierflag=(); [[ -n "$tier" ]] && tierflag=(-c "service_tier=$tier")
+
 root=$(git rev-parse --show-toplevel) || fail "not inside a git repository"
 count() {
   gh pr view "$N" --json reviews,comments \
@@ -67,25 +82,24 @@ dirty=$(git -C "$dir" status --porcelain)
 [[ -z "$dirty" ]] || fail "the working tree differs from the PR head. Commit and push, or pass --worktree <dir>:
 $dirty"
 
-case "$R" in
-  codex)  model="GPT-6 Astra at medium effort" ;;
-  claude) model="Claude Opus at high effort" ;;
-esac
-prompt="You are the $R reviewer, running $model. Review pull request #$N as review $round of 9 by following \"Doing a review\" in .claude/skills/pr-review/SKILL.md exactly."
-echo "request-review: $R round $round/9 on PR #$N at ${head:0:7}, from $dir"
+payload="node_modules/.cache/review/pr$N-$R-$round"
+prompt="You are the $R reviewer, running $model at $effort effort${tier:+, $tier speed}; your review header names it as \`$model ($effort)\`. Your payload file is $payload.json. Review pull request #$N as review $round of 9 by following \"Doing a review\" in .claude/skills/pr-review/SKILL.md exactly."
+echo "request-review: $R round $round/9 on PR #$N at ${head:0:7}, from $dir ($model, $effort${tier:+, $tier})"
 
+# A failed earlier attempt at this round would otherwise be read back in by the reviewer.
+rm -f "$dir/$payload.json" "$dir/$payload.md"
 cd "$dir" || fail "could not enter $dir"
 case "$R" in
   codex)
     token=$(gh auth token) || fail "gh auth token failed; run gh auth login"
     printf '%s\n' "$prompt" |
-      GH_TOKEN="$token" codex exec -m gpt-6-astra -c model_reasoning_effort=medium \
+      GH_TOKEN="$token" codex exec -m "$model" -c "model_reasoning_effort=$effort" ${tierflag[@]+"${tierflag[@]}"} \
         -s workspace-write -c sandbox_workspace_write.network_access=true \
         -c shell_environment_policy.inherit=all -c shell_environment_policy.ignore_default_excludes=true -
     ;;
   claude)
     printf '%s\n' "$prompt" |
-      claude -p --model opus --effort high --setting-sources user \
+      claude -p --model "$model" --effort "$effort" --setting-sources user \
         --permission-mode dontAsk --no-session-persistence \
         --allowedTools Read Grep Glob "Bash(git diff:*)" "Bash(git log:*)" "Bash(git show:*)" \
           "Bash(git rev-parse:*)" "Bash(git status:*)" "Bash(gh pr view:*)" "Bash(gh pr diff:*)" \

@@ -11,11 +11,12 @@ reviewed by that model on request, never automatically. GitHub Copilot isn't use
 
 | Reviewer | Model | How it starts |
 |---|---|---|
-| `codex` | GPT-6 Astra, `medium` effort, via the Codex CLI | By request, as below. |
-| `claude` | Claude Opus, `high` effort, via Claude Code headless | By request, as below; also the fallback when Codex can't run. |
+| `codex` | The model, effort and speed in CLAUDE.md **Models** (`CODEX_REVIEW_*`), via the Codex CLI | By request, as below. |
+| `claude` | The model and effort in CLAUDE.md **Models** (`CLAUDE_REVIEW_*`), via Claude Code headless | By request, as below; also the fallback when Codex can't run. |
 
-The model names and flags in `request-review.sh` were measured on 2026-09-22. Update them
-there, and in this table, when you change them.
+The values live in `.claude/settings.json` `env`; `request-review.sh` reads them and refuses a
+Codex model outside `CODEX_ALLOWED_MODELS` or a speed other than `default`, `fast`, `ultrafast`.
+The CLI flags themselves were measured on 2026-10-28 (codex-cli 0.155.1).
 
 **A PR is opened as a draft and stays one until its review loop is complete.** CI skips
 drafts (the scaffold's `ci.yml`). Marking the PR ready (`gh pr ready <n>`) starts CI, so it
@@ -121,7 +122,7 @@ post it, and say what you checked.
 
    ~~~markdown
    <!-- ai-review: codex 3/9 -->
-   ## codex review 3/9 · GPT-6 Astra (medium) · <head sha, 7 characters>
+   ## codex review 3/9 · <model (effort), as your prompt names them> · <head sha, 7 characters>
 
    **Verdict:** No changes required.
    <!-- or: **Verdict:** Changes suggested: 3 (P1 1, P2 1, P3 1) -->
@@ -146,7 +147,7 @@ post it, and say what you checked.
    new file, `side` is `RIGHT`, and a multi-line suggestion adds `start_line` and
    `start_side`. A suggestion replaces exactly lines `start_line` to `line`.
 
-   Write the payload to `node_modules/.cache/review/<reviewer>-<n>.json` (ignored with
+   Write the payload to `node_modules/.cache/review/pr<N>-<reviewer>-<n>.json` (ignored with
    `node_modules`) with your file-writing tool (Write or Edit in Claude Code, apply_patch in
    Codex), never with a shell redirect, `echo`, `tee` or a here-document. Then pass the
    file's path:
@@ -164,7 +165,7 @@ post it, and say what you checked.
    ```
 
    ```bash
-   gh api repos/{owner}/{repo}/pulls/N/reviews --method POST --input node_modules/.cache/review/<reviewer>-<n>.json
+   gh api repos/{owner}/{repo}/pulls/N/reviews --method POST --input node_modules/.cache/review/pr<N>-<reviewer>-<n>.json
    ```
 
    With no inline findings, send `"comments": []`. Don't send the payload on stdin (`--input -`,
@@ -177,7 +178,7 @@ post it, and say what you checked.
    outside the diff. On a 422, move every inline finding into the body under **Findings**,
    with its fix as a ```` ```diff ```` block, rewrite the file with `"comments": []`, and post
    again. If that fails too, write the body alone to
-   `node_modules/.cache/review/<reviewer>-<n>.md` and post it with
+   `node_modules/.cache/review/pr<N>-<reviewer>-<n>.md` and post it with
    `gh pr comment N --body-file <that path>`.
 6. **Finish** by printing the posted review's URL (`html_url` in the response). If nothing
    could be posted, print the error and the full review body so the requester can post it.
@@ -195,6 +196,13 @@ inline thread with `gh api repos/{owner}/{repo}/pulls/N/comments/<comment id>/re
 body=@<file>`, or with a PR comment that quotes the finding. Then push and request the next
 round.
 
-Stop when a round brings nothing new, or when the reviewer reaches 9/9. If findings are
-still open at the cap, list them in a PR comment with what was decided about each. Then
-mark the PR ready (`gh pr ready <n>`) and let CI run.
+Stop when a round brings nothing new, when every finding in a round is P3, or when the
+reviewer reaches 9/9. An all-P3 round counts only if its **Checked** list covers what the
+last push changed, and only if every P0–P2 from the round before was fixed rather than
+answered with a reason. Check each P3 like any claim: one that is really wrong behaviour or
+a broken rule is a P1 or P2, and the loop goes on. Answer P3s without another round. Fix one only
+when the fix changes no behaviour or signature and weakens no test (prose, JSDoc, names,
+comments, an added test); reply to the rest with the reason or the follow-up issue that
+takes them. If findings are still open at the cap, list them in a PR comment with what was
+decided about each, and the P3s moved to issues. Then mark the PR ready
+(`gh pr ready <n>`) and let CI run.

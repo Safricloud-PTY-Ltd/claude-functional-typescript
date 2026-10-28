@@ -15,8 +15,10 @@ pre-commit:
     # Whole-project, so it is skipped while the orchestrator has territories live: parallel
     # architects' half-written files would fail each other's commits. They typecheck their
     # own paths, and pre-push runs the full check.
+    # No double quotes inside a run: line. On Windows lefthook wraps the whole line in "…"
+    # unescaped, so an inner " ends the command early and every commit fails on a syntax error.
     - name: typecheck
-      run: if ls .claude/territories/* >/dev/null 2>&1; then echo "typecheck skipped while territories are live; pre-push runs pnpm check"; else pnpm typecheck; fi
+      run: if ls .claude/territories/* >/dev/null 2>&1; then echo 'typecheck skipped while territories are live; pre-push runs pnpm check'; else pnpm typecheck; fi
 
 pre-push:
   jobs:

@@ -12,14 +12,18 @@ kept at the edge.
 In a new or existing project directory:
 
 ```bash
-npx github:Safricloud-PTY-Ltd/claude-functional-typescript
+npx --allow-git=all github:Safricloud-PTY-Ltd/claude-functional-typescript
 claude
 ```
 
 That is the whole install. It writes `CLAUDE.md` and `.claude/` and touches nothing else.
+npm 12 refuses git sources by default (`allow-git=none`); `--allow-git=all` opts this one
+command in. Of its values (`all`, `none`, `root`) it is the only one that covers an `npx`
+of a `github:` source. Older npm versions weren't tested with the flag. On Windows the
+hooks need Git Bash, which Claude Code uses for its shell there.
 
 ```
-npx github:Safricloud-PTY-Ltd/claude-functional-typescript [directory] [--force]
+npx --allow-git=all github:Safricloud-PTY-Ltd/claude-functional-typescript [directory] [--force]
 
   directory   Where to write. Defaults to the current directory.
   --force     Overwrite files that already exist. Without it they are left alone.
@@ -86,15 +90,16 @@ the phases.
 
 Pull requests open as drafts. With the **PR reviewer** setting at `codex` or `claude`, the git
 manager requests a review round from that model when the PR opens and after every push, up to
-9 rounds, and the reviewer posts its findings to the PR itself. When a round brings nothing
-new, the PR is marked ready, and CI runs once.
+9 rounds, and the reviewer posts its findings to the PR itself. When the loop ends under the
+`pr-review` skill's stopping rule (a round brings nothing new, or only P3s that meet its
+fences), the PR is marked ready, and CI runs once.
 
 ### The guards
 
 Hooks in [.claude/hooks/](.claude/hooks/) enforce what prose cannot. They keep each architect
 and its sub-agents inside their territory, give each file at most one owner per phase, let
 architects commit only their own files, leave the rest of git and gh to the git manager (which
-can never push to `main`), and run typecheck, lint, and the file's related tests after every
+can never push to `main`), and run typecheck, lint, and the file's own colocated tests after every
 single edit. An agent that strays gets stopped by
 the harness rather than caught in review.
 
@@ -137,7 +142,7 @@ project. Two things follow from that:
 To test a change to the command before it is on `main`, install from the branch:
 
 ```bash
-npx github:Safricloud-PTY-Ltd/claude-functional-typescript#<branch> ../somewhere-empty
+npx --allow-git=all github:Safricloud-PTY-Ltd/claude-functional-typescript#<branch> ../somewhere-empty
 ```
 
 Architect memory lives in `.claude/agent-memory/` and is deliberately kept out of git here,

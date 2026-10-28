@@ -6,17 +6,32 @@ drizzle), and the default branch.>
 ## Settings
 
 - **Auto-merge:** `yes` | `no` — `yes`: the architect merges its own PR once CI is green
-  and the review loop, if any, is silent. `no`: it reports and stops; the owner merges or
+  and the review loop, if any, is done. `no`: it reports and stops; the owner merges or
   says merge. A PR whose diff is documentation or comments only merges either way.
 - **PR reviewer:** `codex` | `claude` | `none` — `codex` or `claude`: requested when the PR
   is opened and after every push that changes it, at most 9 times per reviewer per PR, and
-  posts its own review. Work every review to silence before merging. How to request one,
+  posts its own review. Work the reviews until a round has nothing above P3 (the
+  `pr-review` skill's stopping rule) before merging. How to request one,
   how the reviewer does one, and how to answer it: the `pr-review` skill. `none`: no review
   step; go straight from PR to CI to merge.
 - **Sub-agents:** `claude` | `codex` — `claude`: test-writers and implementors are Claude
-  agents started with the Agent tool. `codex`: they run on Codex (GPT, model
-  `CODEX_SUBAGENT_MODEL`, default `gpt-6-astra`) through the `codex-subagents` skill, outside
-  Claude's hooks, with a file check in place of the write guard. Architects are Claude either way.
+  agents started with the Agent tool. `codex`: they run on Codex (GPT, per **Models**)
+  through the `codex-subagents` skill, outside Claude's hooks, with a file check in place of
+  the write guard. Architects are Claude either way.
+- **Models:** model, effort and speed per role, set in `.claude/settings.json` `env` (a
+  machine overrides them in `settings.local.json`; restart Claude Code after changing
+  them). Effort is any level the model offers; Codex rejects an unknown one itself.
+  Speed is Codex's `service_tier`: `default`, `fast` or `ultrafast` (all three accepted by
+  codex-cli 0.155.1 on gpt-6-astra, 2026-10-28; Codex takes an unknown value silently, so
+  the scripts refuse anything else); empty leaves it to `~/.codex/config.toml`.
+  - PR reviewer, codex: `CODEX_REVIEW_MODEL`, `_EFFORT`, `_TIER`
+  - PR reviewer, claude: `CLAUDE_REVIEW_MODEL`, `_EFFORT`
+  - Test-writer and implementor on Codex: `CODEX_TEST_WRITER_*`, `CODEX_IMPLEMENTOR_*`; a
+    brief's own effort argument overrides `_EFFORT` for that brief
+  - Codex models allowed at all: `CODEX_ALLOWED_MODELS`, comma-separated; the review and
+    sub-agent scripts refuse any other. `gpt-6.1-sol` returned 400 here under a
+    ChatGPT-account login (2026-10-28); it works under other auth.
+  - Every Claude sub-agent: `CLAUDE_CODE_SUBAGENT_MODEL`
 
 PRs open as drafts and stay drafts until the review loop is done; CI skips drafts, so it
 runs once, when the PR is marked ready.
@@ -57,8 +72,8 @@ Each agent's full workflow lives in its agent file. Everyone works in this check
 effort's branch; there are no worktrees. Parallel agents never share a file. Sub-agents
 edit; architects commit their own files; the git manager does the rest of git. Hooks in
 `.claude/hooks/` enforce who may write which files (territories included), limit each
-sub-agent's git and gh to what its role allows, and run typecheck, lint, and the related
-tests after every edit.
+sub-agent's git and gh to what its role allows, and run typecheck, lint, and the edited
+file's own tests after every edit.
 
 **Loop speed.** A sub-agent run takes minutes and its own validation takes seconds, so the
 loop's time goes on runs waiting for each other, not on tests. Briefs within a phase run
