@@ -276,7 +276,8 @@ made mid-loop**, with its grounds.
 - **DONE**: the workstream is finished. Verify it: its commits stay inside its territory,
   its folder has a complete plan, and its scoped check is green when you run it. Check no
   sub-agent of its is still running, because DONE with sub-agents out is a mistake to
-  correct at once. Keep its memory proposals until the review loop ends. Take back any files
+  correct at once. Write its memory proposals to the memory directories now and commit them
+  with the next commit, before `PUSH` (see **Memory**). Take back any files
   you lent it.
 - **Milestones** (messages, no stop): `CONTRACTS` (every contract in the architect's plan is
   committed and typechecks), `CROSS-DONE`.
