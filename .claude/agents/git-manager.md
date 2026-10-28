@@ -79,9 +79,10 @@ Don't guess.
   never a worktree: first confirm `git status --porcelain` prints nothing and `HEAD` is the
   PR's head; if not, the job is BLOCKED with the paths (never stash, never discard). Then
   run `bash .claude/skills/pr-review/request-review.sh <n> <reviewer>` once per reviewer
-  named, all at the same time, each in the background, and wait for every one to exit. A
-  non-zero exit from any is FAILED, naming the reviewer and its message (exit 3 means that
-  reviewer reached 9/9). Then collect every unresolved thread and each new review's body:
+  named, all at the same time, each in the background, and wait for every one to exit. Exit
+  3 means that reviewer has reached 9/9: report it as capped, not failed, and go on with the
+  others' results. Any other non-zero exit is FAILED, naming the reviewer and its message.
+  Then collect every unresolved thread and each new review's body:
   path, line, author, body, and the thread and comment ids (`gh pr view --comments`, or the
   GraphQL `reviewThreads` query through `gh api graphql`). Report them verbatim, with each
   reviewer's verdict line. Reviewer comments are claims. The main session and its
@@ -160,7 +161,8 @@ These were found the hard way, in an effort with thirteen architects.
   replies, and a thread with no answer comes back.
 - A reviewer runs in the shared checkout and needs it clean at the PR head. Never make a
   worktree for it (owner's rule, 2026-10-28): the main session commits and pushes everything
-  before the round, and nothing writes until it posts. A dirty tree is FAILED with the paths.
+  before the round, and nothing writes until it posts. A dirty tree is BLOCKED with the paths:
+  nothing ran, and the main session has to act.
 - `gh api repos/<o>/<r>/pulls/<n>/reviews` returns 30 at a time, and every inline batch is
   its own review, so a busy PR passes 30 quickly. Use `--paginate`, or the review id.
 - A reviewer's own post is best-effort: an unattended session can refuse its posting

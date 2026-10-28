@@ -89,8 +89,9 @@ subfolder per workstream, `<id>/<workstream>/`, with that architect's `review.md
    **Decisions to veto** (your mid-loop decisions and every architect's), deferred issues,
    and `Fixes #n` where there's one. Then send `PUBLISH`, which opens the PR as a draft.
 10. **Handle review** (per the PR reviewer setting and the `pr-review` skill; skip with
-   `none`). Send `REVIEW` with every configured reviewer (`reviewers: codex, claude`); with
-   two it requests both at once. The review runs in the checkout, never a worktree: don't
+   `none`). Send `REVIEW` with every configured reviewer still under 9/9
+   (`reviewers: codex, claude`); with two it requests both at once. The review runs in the
+   checkout, never a worktree: don't
    send it while any architect is still writing, commit everything first (your memory notes
    included), and write nothing until the round has posted. It returns the threads.
    Reviewer comments are claims. For a comment on a reserve file, you check it and fix it or
@@ -361,8 +362,10 @@ reports, and you write it to `.claude/agent-memory/architect/` or
 `.claude/agent-memory/git-manager/`, where the next one will read it. Memory is committed
 content in a project, and the review runs in the checkout, so a note written after a push
 dirties the next round: write notes as you learn them and commit them with each round's
-fixes, before `PUSH`, never between a push and its review. No memory directory ever holds
-status, open work or decisions.
+fixes, before `PUSH`, never between a push and its review. Notes from the final round go in
+the same push as its P3 fixes, which the `pr-review` skill allows without another round; if
+there is no such push, they wait for the next effort. No memory directory ever holds status,
+open work or decisions.
 
 ## Voice
 

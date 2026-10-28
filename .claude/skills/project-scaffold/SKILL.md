@@ -57,8 +57,9 @@ package versions (see "Versions" below); copy them as they are, then adjust with
    ```
 
    Add `drizzle-orm drizzle-zod` and `-D drizzle-kit` when the project has a database, and
-   add all three to `knip.json` `ignoreDependencies` until code imports them, for the reason
-   `neverthrow` and `zod` are there. `esbuild`, which drizzle-kit pulls in, is already in
+   add all three to `knip.json` `ignoreDependencies` until knip finds them on its own (an
+   import for the first two, a drizzle config for the CLI), for the reason `neverthrow` and
+   `zod` are there. `esbuild`, which drizzle-kit pulls in, is already in
    `allowBuilds` as `false` (its binary is an optional dependency; the script only validates).
 
 3. Run `pnpm check` and `pnpm coverage`. On the starter tree both pass, with two test files
@@ -127,9 +128,10 @@ Re-validated downstream on 2026-10-28 (genesys-alerts-manager, a fresh bootstrap
 10.13, typescript-eslint 8.72, eslint-plugin-jsdoc 65.4.2 (adds `jsdoc/escape-inline-tags`;
 the negative cases above all still refused), dependency-cruiser 18.7, knip 6.43, lefthook 2.2,
 Stryker 10.1, pnpm 11.25. That bootstrap found six asset defects fixed in issue #14 (the
-barrel acceptance test refused by `no-own-barrel`, `eslint.config.js` past its own
-`max-lines`, two files prettier rejected, the vendored `.claude/` failing `format:check`,
-`.pnpm-store/` untracked). Measured here the same day: with `lefthook.yml` present, knip
+barrel acceptance test refused by `no-own-barrel`, no `src/shared/index.test.ts` in the
+starter tree, `eslint.config.js` past its own `max-lines`, `stryker.config.json` not
+prettier-formatted, the vendored `.claude/` failing `format:check`, `.pnpm-store/`
+untracked). Measured here the same day: with `lefthook.yml` present, knip
 6.43.0 still reports `lefthook` as an unused devDependency when it leaves
 `ignoreDependencies`, so it stays there.
 

@@ -3,7 +3,7 @@ import fc from 'fast-check';
 import { fromThrowable } from 'neverthrow';
 import { stub, toUnexpected } from './index.ts';
 
-// The module's acceptance test: it imports only the barrel, as every index.test.ts does.
+// The module's acceptance test: from its own module it imports nothing but the barrel.
 describe('shared barrel', () => {
   it('exports toUnexpected, which wraps any cause as an Unexpected error', () => {
     fc.assert(
