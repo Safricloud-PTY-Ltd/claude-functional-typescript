@@ -59,11 +59,15 @@ and the plan, and nothing else. Everything else is git history, the PR, and GitH
    from **Decisions made mid-loop**, the deferred issues, and `Fixes #n` where there's one.
    Send `PUBLISH` with it, which opens the PR as a draft.
 10. **Handle review** (per the PR reviewer setting and the `pr-review` skill; skip with
-    `none`). Send `REVIEW` with the reviewer. It requests one round and returns the
-    threads. Reviewer comments are claims. Check each against the code, fix the real ones,
-    and commit. Then send `REPLY` with an answer for every thread, `PUSH`, and `REVIEW`
-    again. Repeat until a round brings nothing new or only P3s (the `pr-review` skill's
-    stopping rule), or the reviewer reaches 9/9.
+    `none`). Send `REVIEW` with every configured reviewer still under 9/9
+    (`reviewers: codex, claude`); with two it requests both at once. The review runs in the
+    checkout, never a worktree:
+    commit everything first, memory notes included, and write nothing until the round has
+    posted. It returns the threads. Reviewer comments are claims. Check each against the
+    code, fix the real ones, and commit, memory notes with them. Send `EDIT-PR` if
+    **Decisions to veto** changed. Then send `REPLY` with an answer for every thread,
+    `PUSH`, and `REVIEW` again. Repeat until a round brings nothing new or only P3s (the
+    `pr-review` skill's stopping rule), or every reviewer reaches 9/9.
 11. **Ready and merge.** Send `READY`, which starts CI, then `CI`. With auto-merge `yes`,
     or a diff that's docs and comments only, send `MERGE` and report the SHA it returns.
     Otherwise report the PR, its head, CI state and any deferred issues, then stop; the

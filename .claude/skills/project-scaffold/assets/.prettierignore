@@ -4,3 +4,9 @@ dist
 reports
 .claude/locks
 .claude/territories
+# The vendored harness is the scaffold's, not the project's; its files aren't prettier-formatted
+# (eight of them fail, and prettier would pad every markdown table). settings.json and
+# agent-memory/ are the project's own and stay checked. ESLint ignores .claude/** likewise.
+.claude/agents
+.claude/hooks
+.claude/skills

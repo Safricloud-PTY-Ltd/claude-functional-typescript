@@ -3,6 +3,9 @@ dist/
 coverage/
 reports/
 .stryker-tmp/
+# pnpm creates a store here when it can't reach the user's (the Codex reviewer's sandbox); a
+# tracked one dirties the checkout and fails format:check.
+.pnpm-store/
 .claude/locks/
 .claude/territories/
 .claude/settings.local.json

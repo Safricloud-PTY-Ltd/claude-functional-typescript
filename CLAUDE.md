@@ -8,12 +8,15 @@ drizzle), and the default branch.>
 - **Auto-merge:** `yes` | `no` — `yes`: the architect merges its own PR once CI is green
   and the review loop, if any, is done. `no`: it reports and stops; the owner merges or
   says merge. A PR whose diff is documentation or comments only merges either way.
-- **PR reviewer:** `codex` | `claude` | `none` — `codex` or `claude`: requested when the PR
-  is opened and after every push that changes it, at most 9 times per reviewer per PR, and
-  posts its own review. Work the reviews until a round has nothing above P3 (the
-  `pr-review` skill's stopping rule) before merging. How to request one,
-  how the reviewer does one, and how to answer it: the `pr-review` skill. `none`: no review
-  step; go straight from PR to CI to merge.
+- **PR reviewer:** `codex` | `claude` | `codex, claude` | `none` — each reviewer named is
+  requested when the PR is opened and after every push that changes it, at most 9 times per
+  reviewer per PR, and posts its own review. With two, every round requests both at once,
+  never one after the other. A round is every reviewer on one head; work the reviews until
+  a round has nothing above P3 (the `pr-review` skill's stopping rule) before merging. The
+  review runs in this checkout, never a worktree: everything is committed and pushed before
+  a round, and nothing is written until it has posted. How to request one, how the reviewer
+  does one, and how to answer it: the `pr-review` skill. `none`: no review step; go
+  straight from PR to CI to merge.
 - **Sub-agents:** `claude` | `codex` — `claude`: test-writers and implementors are Claude
   agents started with the Agent tool. `codex`: they run on Codex (GPT, per **Models**)
   through the `codex-subagents` skill, outside Claude's hooks, with a file check in place of

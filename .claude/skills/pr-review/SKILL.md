@@ -6,13 +6,14 @@ description: How pull requests are reviewed here — by a Codex or Claude model 
 # Pull request review
 
 The **PR reviewer** setting in `CLAUDE.md` decides whether this applies. With `none`, skip
-it: a PR goes from draft to ready to merge. With `codex` or `claude`, pull requests are
-reviewed by that model on request, never automatically. GitHub Copilot isn't used.
+it: a PR goes from draft to ready to merge. With `codex`, `claude` or `codex, claude`, pull
+requests are reviewed by those models on request, never automatically; with two, every round
+requests both at the same time, never one after the other. GitHub Copilot isn't used.
 
 | Reviewer | Model | How it starts |
 |---|---|---|
 | `codex` | The model, effort and speed in CLAUDE.md **Models** (`CODEX_REVIEW_*`), via the Codex CLI | By request, as below. |
-| `claude` | The model and effort in CLAUDE.md **Models** (`CLAUDE_REVIEW_*`), via Claude Code headless | By request, as below; also the fallback when Codex can't run. |
+| `claude` | The model and effort in CLAUDE.md **Models** (`CLAUDE_REVIEW_*`), via Claude Code headless | By request, as below; with `codex` alone configured, also the fallback when Codex can't run. |
 
 The values live in `.claude/settings.json` `env`; `request-review.sh` reads them and refuses a
 Codex model outside `CODEX_ALLOWED_MODELS` or a speed other than `default`, `fast`, `ultrafast`.
@@ -34,20 +35,23 @@ the PR plus one.
 
 Under the orchestrator, or with a solo architect, the **git manager** requests rounds as
 part of its `REVIEW` job. Anyone else with state-changing GitHub rights (a main session
-with no git manager) runs the same script:
+with no git manager) runs the same script, once per configured reviewer:
 
 ```bash
-bash .claude/skills/pr-review/request-review.sh <pr number> <codex|claude> [--worktree <dir>]
+bash .claude/skills/pr-review/request-review.sh <pr number> <codex|claude>
 ```
 
-The script counts the markers and stops at 9. It checks that the reviewed checkout is
+The script counts the reviewer's markers and stops at 9. It checks that the checkout is
 exactly the PR's head with a clean working tree, starts the reviewer, and when the reviewer
 exits, confirms that the round's marker landed. It exits non-zero, with the reason, if any
 step fails. A run that fails doesn't count against the 9.
 
-- **While agents are still working in the checkout,** pass `--worktree <dir>` with a path
-  in the scratchpad. The script reviews from a detached worktree at the PR head, then
-  removes it and prunes. The shared checkout is never clean mid-effort.
+- **The review runs in this checkout, never a worktree.** So before a round: every change
+  is committed, memory notes included, and pushed; no architect is still writing; and
+  nothing is written until the round has posted. A dirty tree or a head behind the PR fails
+  the script with the paths. Nothing is ever stashed.
+- **With two reviewers,** start one script per reviewer at the same time, in the background,
+  and wait for both. Their payload files are named per reviewer, so they don't collide.
 - **It takes minutes,** so run it in the background and wait for it to exit.
 - **Codex** gets `GH_TOKEN` from `gh auth token` for that one run, because inside Codex's
   sandbox `gh` can't reach the system keyring. `workspace-write` with network on is the
@@ -196,8 +200,9 @@ inline thread with `gh api repos/{owner}/{repo}/pulls/N/comments/<comment id>/re
 body=@<file>`, or with a PR comment that quotes the finding. Then push and request the next
 round.
 
-Stop when a round brings nothing new, when every finding in a round is P3, or when the
-reviewer reaches 9/9. An all-P3 round counts only if its **Checked** list covers what the
+A round is every configured reviewer on one head; the cap of 9 is per reviewer. Stop when a
+round brings nothing new, when every finding in a round is P3, or when every reviewer has
+reached 9/9. An all-P3 round counts only if its **Checked** list covers what the
 last push changed, and only if every P0–P2 from the round before was fixed rather than
 answered with a reason. Check each P3 like any claim: one that is really wrong behaviour or
 a broken rule is a P1 or P2, and the loop goes on. Answer P3s without another round. Fix one only

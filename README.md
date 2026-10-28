@@ -88,9 +88,10 @@ Each piece of work gets an id (`<yyyy-mm-dd>-<slug>`) that names its branch and 
 under `contributions/`, holding a review for you to read and a plan with the call graph and
 the phases.
 
-Pull requests open as drafts. With the **PR reviewer** setting at `codex` or `claude`, the git
-manager requests a review round from that model when the PR opens and after every push, up to
-9 rounds, and the reviewer posts its findings to the PR itself. When the loop ends under the
+Pull requests open as drafts. With the **PR reviewer** setting at `codex`, `claude` or both,
+the git manager requests a review round from each model, at the same time, when the PR opens
+and after every push, up to 9 rounds per reviewer, and each reviewer posts its findings to the
+PR itself. The review runs in the one checkout, never a worktree. When the loop ends under the
 `pr-review` skill's stopping rule (a round brings nothing new, or only P3s that meet its
 fences), the PR is marked ready, and CI runs once.
 
@@ -151,7 +152,9 @@ committed content, shared with the team.
 
 ## Status
 
-Early and moving. The harness and the standards are in use; the toolchain in
-`project-scaffold/assets/` is validated config by config but has not yet been run end to end
-from a fresh bootstrap, so expect to fix things on first use. Open work is tracked in
+Early and moving. The harness and the standards are in use. A fresh bootstrap on Windows (a
+downstream project, 2026-10-28) found six defects in the toolchain in
+`project-scaffold/assets/` (issue #14). The fixed assets, copied into a separate scratch
+Windows project, then passed `pnpm check` and coverage. Other platforms, and Stryker, haven't
+been checked against these assets. Open work is tracked in
 [issues](https://github.com/Safricloud-PTY-Ltd/claude-functional-typescript/issues).

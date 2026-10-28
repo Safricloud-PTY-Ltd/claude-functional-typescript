@@ -1,25 +1,22 @@
 #!/usr/bin/env bash
 # Requests one review round on a pull request, as "Requesting a review" in SKILL.md describes.
 #
-#   bash .claude/skills/pr-review/request-review.sh <pr number> <codex|claude> [--worktree <dir>]
+#   bash .claude/skills/pr-review/request-review.sh <pr number> <codex|claude>
 #
-# Counts the reviewer's markers on the PR and stops at 9. Checks that the reviewed checkout is
-# exactly the PR head with a clean tree (or reviews from a detached worktree at the head, which
-# is removed afterwards). Runs the reviewer in the foreground, then confirms its marker landed.
+# Counts the reviewer's markers on the PR and stops at 9. Checks that the checkout is exactly
+# the PR head with a clean tree: the review runs here, never in a worktree (owner's rule,
+# 2026-10-28), so everything is committed and pushed before a round and nothing is written
+# until it has posted. Runs the reviewer in the foreground, then confirms its marker landed.
+# With two reviewers configured, one copy of this script runs per reviewer, at the same time.
 # Exit 0: the round posted. 1: a precondition or the run failed. 2: bad arguments. 3: the cap.
 # A script rather than prose because the git guard refuses `$(gh auth token)` in a command.
 set -u
 
-usage() { echo "usage: request-review.sh <pr number> <codex|claude> [--worktree <dir>]" >&2; exit 2; }
-[[ $# -ge 2 ]] || usage
-N="$1"; R="$2"; shift 2
+usage() { echo "usage: request-review.sh <pr number> <codex|claude>" >&2; exit 2; }
+[[ $# -eq 2 ]] || usage
+N="$1"; R="$2"
 [[ "$N" =~ ^[0-9]+$ ]] || usage
 case "$R" in codex|claude) ;; *) usage ;; esac
-wt=""
-if [[ $# -gt 0 ]]; then
-  [[ "$1" == --worktree && $# -eq 2 ]] || usage
-  wt="$2"
-fi
 
 fail() { echo "request-review: $1" >&2; exit "${2:-1}"; }
 
@@ -39,12 +36,10 @@ case "$tier" in ''|default|fast|ultrafast) ;; *) fail "CODEX_REVIEW_TIER is $tie
 tierflag=(); [[ -n "$tier" ]] && tierflag=(-c "service_tier=$tier")
 
 # The project root is where this script is installed (<project>/.claude/skills/pr-review/), not
-# the repository's top level: a project nested in a larger repository (<repo>/web) installs and
-# reviews from the project directory (issue #12). CLAUDE_PROJECT_DIR can't be used, since it is
-# set for hooks but not for Bash tool commands (measured 2026-10-28). The project's path inside
-# the repository (`web/`, empty at the top level) places the review inside a worktree below.
-root=$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && { pwd -W 2>/dev/null || pwd -P; }) || fail "could not resolve the project root"
-prefix=$(git -C "$root" rev-parse --show-prefix) || fail "$root is not inside a git repository"
+# the repository's top level: a project nested in a larger repository (<repo>/web) reviews from
+# the project directory (issue #12). CLAUDE_PROJECT_DIR can't be used, since it is set for hooks
+# but not for Bash tool commands (measured 2026-10-28).
+dir=$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && { pwd -W 2>/dev/null || pwd -P; }) || fail "could not resolve the project root"
 count() {
   gh pr view "$N" --json reviews,comments \
     --jq "[.reviews[].body, .comments[].body] | map(select(startswith(\"<!-- ai-review: $R \"))) | length"
@@ -54,38 +49,10 @@ before=$(count) || fail "could not read PR #$N"
 round=$((before + 1))
 head=$(gh pr view "$N" --json headRefOid -q .headRefOid) || fail "could not read PR #$N's head"
 
-dir="$root"
-if [[ -n "$wt" ]]; then
-  # Absolute from the start: git -C and the cd below would read a relative path differently,
-  # and the cleanup must name the same directory after the cd into it.
-  case "$wt" in /*|[A-Za-z]:*) ;; *) wt="$(pwd -P)/$wt" ;; esac
-  [[ -e "$wt" ]] && fail "$wt already exists; give a fresh scratch path"
-  git -C "$root" worktree prune   # drop records left by an earlier run that was killed
-  git -C "$root" fetch -q origin "$head" 2>/dev/null || true
-  git -C "$root" -c core.longpaths=true worktree add -q --detach "$wt" "$head" || fail "could not add a worktree at $wt"
-  dir="${wt}${prefix:+/${prefix%/}}"
-  # Always remove the worktree, even on failure. `git worktree remove --force` unregisters it and
-  # deletes it; rm -rf catches what a locked file left behind; prune drops any stale record. If the
-  # directory still exists afterwards, say so rather than leave it silently.
-  cleanup() {
-    git -C "$root" worktree remove --force "$wt" >/dev/null 2>&1
-    rm -rf "$wt" 2>/dev/null
-    git -C "$root" worktree prune
-    [[ -e "$wt" ]] && echo "request-review: could not remove $wt; delete it by hand" >&2
-    return 0
-  }
-  trap cleanup EXIT INT TERM
-  # A fresh worktree has no node_modules, so the reviewer could not run vitest. Install from the
-  # local store only (no network, no install scripts); node_modules is gitignored, so the tree
-  # stays clean. If it fails, the review still runs, from reading alone.
-  (cd "$dir" && pnpm install --frozen-lockfile --offline --ignore-scripts >/dev/null 2>&1) \
-    || echo "request-review: could not install node_modules in $dir; the reviewer will review by reading only" >&2
-fi
-
 at=$(git -C "$dir" rev-parse HEAD)
-[[ "$at" == "$head" ]] || fail "the checkout is at $at, not the PR head $head. Push first, or pass --worktree <dir>."
+[[ "$at" == "$head" ]] || fail "the checkout is at $at, not the PR head $head. Commit and push first; the review runs in this checkout."
 dirty=$(git -C "$dir" status --porcelain)
-[[ -z "$dirty" ]] || fail "the working tree differs from the PR head. Commit and push, or pass --worktree <dir>:
+[[ -z "$dirty" ]] || fail "the working tree differs from the PR head. Commit everything (memory notes included) and push first; the review runs in this checkout:
 $dirty"
 
 payload="node_modules/.cache/review/pr$N-$R-$round"
