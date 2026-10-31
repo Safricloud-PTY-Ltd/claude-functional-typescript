@@ -117,6 +117,8 @@ test('refusal keeps its plain message for git-policy; the write guard CLI adds t
   assert.match(scratchNote(territories, 'a-billing'), /^ Outside the repo you may write only inside .*billing\.$/);
 
   const cli = (file) => spawnSync(process.execPath, [path.join(__dirname, 'territory.cjs'), 'a-billing', 'architect', file], {
+    // A fixed cwd the relative path can't resolve from, wherever node --test was launched.
+    cwd: __dirname,
     env: { ...process.env, CLAUDE_PROJECT_DIR: repo },
     encoding: 'utf8',
   }).stdout.split('\n');
