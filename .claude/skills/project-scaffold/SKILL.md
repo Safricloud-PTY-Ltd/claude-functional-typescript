@@ -154,6 +154,11 @@ these assets bootstrapped again in a scratch project) with knip 6.44.0, eslint 1
   `overrides` in `pnpm-workspace.yaml` (`qs`, `deepmerge-ts`, drizzle-kit's esbuild) take it
   to 1 moderate (`minimatch` under eslint, left alone; the file says why), with and without
   drizzle installed. `drizzle-kit generate` wrote a correct migration under them.
+- **Workflow actions.** `actions/checkout@v7`, `pnpm/action-setup@v6`,
+  `actions/setup-node@v7` and `actions/upload-artifact@v7`, which are the four bumps Dependabot
+  opened on day one downstream. Each one's PR CI passed there, and a dispatched nightly
+  passed with all four, the artifact upload included. `pnpm/action-setup@v6` also ends the
+  Node 20 deprecation warning that v4 printed.
 
 When a tool's major version changes, re-run every script, re-check the negative cases (a
 `let`, a nested named function, a `throw` in core, a `core/` → `shell/` import, a cross-domain
