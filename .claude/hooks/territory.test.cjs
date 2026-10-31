@@ -36,8 +36,22 @@ test('an architect may write strictly inside its registered scratch folder, in a
   assert.equal(scratchAllowed(territories, 'a-billing', inBilling), true);
   assert.equal(scratchAllowed(territories, 'a-billing', fwd(inBilling)), true);
   if (process.platform === 'win32') {
+    const shell = (p) => fwd(p).replace(/^([A-Za-z]):/, (_, d) => `/${d.toLowerCase()}`);
     assert.equal(scratchAllowed(territories, 'a-billing', path.join(pad, 'BILLING', 'x.md')), true);
+    assert.equal(scratchAllowed(territories, 'a-billing', shell(inBilling)), true);
   }
+});
+
+test('a scratch line in Git Bash spelling registers the same folder', { skip: process.platform !== 'win32' }, (t) => {
+  const shell = (p) => fwd(p).replace(/^([A-Za-z]):/, (_, d) => `/${d.toLowerCase()}`);
+  const { pad, territories } = setup(t, ({ pad: p }) => ({ billing: `src/billing/*\nscratch ${shell(path.join(p, 'billing'))}\nagent a-billing\n` }));
+  assert.equal(scratchAllowed(territories, 'a-billing', path.join(pad, 'billing', 'x.md')), true);
+});
+
+test('a relative file resolves against the base it is given, as repoRelative does', (t) => {
+  const { pad, territories } = setup(t, billing);
+  assert.equal(scratchAllowed(territories, 'a-billing', 'x.md', path.join(pad, 'billing')), true);
+  assert.equal(scratchAllowed(territories, 'a-billing', 'x.md', path.join(pad, 'other')), false);
 });
 
 test('the folder itself, its parent, siblings and escapes are refused', (t) => {
@@ -48,7 +62,7 @@ test('the folder itself, its parent, siblings and escapes are refused', (t) => {
     path.join(pad, 'billing-notes.md'),
     path.join(pad, 'billingX', 'x.md'),
     path.join(pad, 'other', 'x.md'),
-    path.join(pad, 'billing', '..', 'other', 'x.md'),
+    `${fwd(path.join(pad, 'billing'))}/../other/x.md`,
   ];
   refused.forEach((p) => assert.equal(scratchAllowed(territories, 'a-billing', p), false, p));
 });

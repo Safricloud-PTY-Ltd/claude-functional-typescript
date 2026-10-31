@@ -88,7 +88,7 @@ function refusal(territories, agentType, agentId, rel) {
   return null;
 }
 
-// Whether a territory architect may write file outside the repo: only strictly inside a folder
+// Whether a territory architect may write a file outside the repo: only strictly inside a folder
 // its territory registers with a `scratch <absolute path>` line. The orchestrator writes that
 // line (territory files are reserve, so no architect can) with its own session's
 // <scratchpad>/<workstream>, the folder the brief hands the architect and codex-subagents uses.
@@ -123,10 +123,12 @@ function scratchRoots(own) {
     .filter((root) => scratchShaped(root, own.name));
 }
 
-function scratchAllowed(territories, agentId, file) {
+// A relative file resolves against base, as repoRelative does, so the CLI's two verdicts are
+// about the same path.
+function scratchAllowed(territories, agentId, file, base = process.cwd()) {
   const own = territories.find((t) => t.agents.includes(agentId));
   if (!own) return false;
-  const abs = real(path.resolve(fromShell(file)));
+  const abs = real(path.resolve(fromShell(base), fromShell(file)));
   return scratchRoots(own).some((root) => inside(root, abs));
 }
 
@@ -152,7 +154,7 @@ if (require.main === module) {
   const rel = repoRelative(root, file);
   const territories = load(root);
   const outsideArchitect = agentType === 'architect' && rel === null;
-  const scratch = outsideArchitect && scratchAllowed(territories, agentId, file);
+  const scratch = outsideArchitect && scratchAllowed(territories, agentId, file, root);
   const plain = scratch ? null : refusal(territories, agentType, agentId, rel);
   const why = plain && outsideArchitect ? plain + scratchNote(territories, agentId) : plain;
   process.stdout.write(`${rel ?? ''}\n${why ?? 'ok'}\n`);
