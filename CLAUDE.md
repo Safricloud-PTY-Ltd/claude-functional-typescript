@@ -5,9 +5,12 @@ drizzle), and the default branch.>
 
 ## Settings
 
-- **Auto-merge:** `yes` | `no` — `yes`: the architect merges its own PR once CI is green
-  and the review loop, if any, is done. `no`: it reports and stops; the owner merges or
-  says merge. A PR whose diff is documentation or comments only merges either way.
+- **Auto-merge:** `yes` | `yes, admin` | `no` — `yes`: the architect merges its own PR once
+  CI is green and the review loop, if any, is done. `yes, admin`: the same, with
+  `gh pr merge --admin`; it is the owner's standing yes to merging past a ruleset on `main`
+  that requires an approving review no account here can give, and needn't be asked per PR.
+  `no`: it reports and stops; the owner merges or says merge. A PR whose diff is
+  documentation or comments only merges either way.
 - **PR reviewer:** `codex` | `claude` | `codex, claude` | `none` — each reviewer named is
   requested when the PR is opened and after every push that changes it, at most 9 times per
   reviewer per PR, and posts its own review. With two, every round requests both at once,

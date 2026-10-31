@@ -102,9 +102,9 @@ Don't guess.
   (`gh run view <run id> --log-failed`, the last 80 lines).
 - **MERGE** `method: squash`. The main session has already decided that the merge is due
   under the auto-merge setting. Confirm CI is green on the PR's head before you merge. Then
-  run `gh pr merge <n> --squash --delete-branch`, adding `--admin` when `CLAUDE.md`'s
-  auto-merge setting records the owner's standing yes to it (a ruleset on `main` that requires
-  an approving review no account here can give), then `git switch main` and
+  run `gh pr merge <n> --squash --delete-branch`, adding `--admin` only when `CLAUDE.md`'s
+  auto-merge setting is `yes, admin` (the owner's standing yes to merging past a ruleset on
+  `main` that requires an approving review no account here can give), then `git switch main` and
   `git pull --ff-only`, and delete the local branch if it is still there (`git branch
   --list`): run from a clean checkout of the branch, `gh pr merge --delete-branch` switches to
   `main`, fast-forwards it and deletes the local branch itself. Report the merge SHA from

@@ -71,13 +71,7 @@ function refusal(territories, agentType, agentId, rel) {
   if (agentType === 'architect') {
     const own = territories.find((t) => t.agents.includes(agentId));
     if (!own) return `no territory names architect ${agentId}. The orchestrator registers each architect after spawning it. Report BLOCKED with this id.`;
-    if (rel === null) {
-      const roots = scratchRoots(own);
-      const where = roots.length
-        ? `you may write only inside ${roots.join(' or ')}`
-        : 'you may write nothing, because your territory registers no scratch folder shaped <tmpdir>/claude/<project>/<session>/scratchpad/<territory name>; ask the orchestrator for one';
-      return `${shown} is outside your territory, ${own.name}. Outside the repo ${where}.`;
-    }
+    if (rel === null) return `${shown} is outside your territory, ${own.name}.`;
     const hs = holders(territories, rel);
     if (!hs.includes(own)) return `${rel} is outside your territory, ${own.name}. A shared file is a NEEDS report and another territory's file is a CROSS report, both to the orchestrator.`;
     if (hs.length > 1) return `${rel} is in territories ${hs.map((t) => t.name).join(' and ')}. Territories overlap; report BLOCKED to the orchestrator.`;
@@ -104,6 +98,9 @@ function refusal(territories, agentType, agentId, rel) {
 // scratchpad root, the temp directory or any other folder registers nothing. Both paths are
 // canonicalised (symlinks, .., and the 8.3 and long spellings of one folder resolve alike).
 // Writes only: git-policy.cjs never consults this, so a scratch path is still no commit pathspec.
+// The <tmpdir>/claude/... shape was measured on Windows only (2026-10-31). If Claude Code puts
+// its scratchpad elsewhere on another platform, every `scratch` line is ignored there: the gate
+// fails closed (no scratch writes), and territory.test.cjs is where to pin the real shape.
 const same = (a, b) => (process.platform === 'win32' ? a.toLowerCase() === b.toLowerCase() : a === b);
 const inside = (dir, p) => {
   const rel = path.relative(dir, p);
@@ -118,7 +115,7 @@ function scratchShaped(root, name) {
 }
 
 // The canonical scratch folders a territory registers that pass the shape gate. The verdict
-// (scratchAllowed) and the refusal message both read this, so they can't drift apart.
+// (scratchAllowed) and the write guard's note (scratchNote) both read this, so they can't drift.
 function scratchRoots(own) {
   return own.scratch
     .filter((dir) => path.isAbsolute(fromShell(dir)))
@@ -133,7 +130,19 @@ function scratchAllowed(territories, agentId, file) {
   return scratchRoots(own).some((root) => inside(root, abs));
 }
 
-module.exports = { fromShell, repoRelative, load, holders, refusal, scratchAllowed };
+// The sentence the write guard appends when it refuses an architect a path outside the repo.
+// Only the CLI below uses it: git-policy's pathspec refusals keep refusal()'s plain message,
+// because a scratch folder is never a commit pathspec.
+function scratchNote(territories, agentId) {
+  const own = territories.find((t) => t.agents.includes(agentId));
+  if (!own) return '';
+  const roots = scratchRoots(own);
+  return roots.length
+    ? ` Outside the repo you may write only inside ${roots.join(' or ')}.`
+    : ' Outside the repo you may write nothing, because your territory registers no scratch folder shaped <tmpdir>/claude/<project>/<session>/scratchpad/<territory name>; ask the orchestrator for one.';
+}
+
+module.exports = { fromShell, repoRelative, load, holders, refusal, scratchAllowed, scratchNote };
 
 // CLI for guard-writes.sh: node territory.cjs <agent_id> <agent_type> <path>
 // Prints the canonical repo-relative path (empty outside the repo), then `ok` or the refusal.
@@ -142,7 +151,9 @@ if (require.main === module) {
   const root = process.env.CLAUDE_PROJECT_DIR || process.cwd();
   const rel = repoRelative(root, file);
   const territories = load(root);
-  const scratch = agentType === 'architect' && rel === null && scratchAllowed(territories, agentId, file);
-  const why = scratch ? null : refusal(territories, agentType, agentId, rel);
+  const outsideArchitect = agentType === 'architect' && rel === null;
+  const scratch = outsideArchitect && scratchAllowed(territories, agentId, file);
+  const plain = scratch ? null : refusal(territories, agentType, agentId, rel);
+  const why = plain && outsideArchitect ? plain + scratchNote(territories, agentId) : plain;
   process.stdout.write(`${rel ?? ''}\n${why ?? 'ok'}\n`);
 }

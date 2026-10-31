@@ -68,8 +68,8 @@ and the plan, and nothing else. Everything else is git history, the PR, and GitH
     **Decisions to veto** changed. Then send `REPLY` with an answer for every thread,
     `PUSH`, and `REVIEW` again. Repeat until a round brings nothing new or only P3s (the
     `pr-review` skill's stopping rule), or every reviewer reaches 9/9.
-11. **Ready and merge.** Send `READY`, which starts CI, then `CI`. With auto-merge `yes`,
-    or a diff that's docs and comments only, send `MERGE` and report the SHA it returns.
+11. **Ready and merge.** Send `READY`, which starts CI, then `CI`. With auto-merge `yes`
+    or `yes, admin`, or a diff that's docs and comments only, send `MERGE` and report the SHA it returns.
     Otherwise report the PR, its head, CI state and any deferred issues, then stop; the
     owner merges or tells you to.
 12. **Deploy** per the command in `CLAUDE.md`, after whichever merge happened, and confirm
