@@ -65,6 +65,11 @@ test('the folder itself, its parent, siblings and escapes are refused', (t) => {
     `${fwd(path.join(pad, 'billing'))}/../other/x.md`,
   ];
   refused.forEach((p) => assert.equal(scratchAllowed(territories, 'a-billing', p), false, p));
+  if (process.platform === 'win32') {
+    // path.relative across drives returns the target itself, so this pins inside()'s isAbsolute check.
+    const otherDrive = /^[Qq]:/.test(pad) ? 'R:/x.md' : 'Q:/x.md';
+    assert.equal(scratchAllowed(territories, 'a-billing', otherDrive), false);
+  }
 });
 
 test('another session or project with the same workstream name is refused', (t) => {
@@ -85,6 +90,8 @@ test('a scratch line that is missing, relative, or not shaped like a workstream 
     deep: `src/deep/*\nscratch ${fwd(path.join(p, 'deep', 'sub'))}\nagent a-deep\n`,
     // Four segments under <tmpdir>/claude, the right length, but the third isn't `scratchpad`.
     segment: `src/segment/*\nscratch ${fwd(path.join(d, 'session-1', 'memory', 'segment'))}\nagent a-segment\n`,
+    // Outside <tmpdir>/claude, yet `../not-claude/scratchpad/outside` relative to it has the shape.
+    outside: `src/outside/*\nscratch ${fwd(path.join(os.tmpdir(), 'not-claude', 'scratchpad', 'outside'))}\nagent a-outside\n`,
   }));
   fs.mkdirSync(path.join(pad, 'deep', 'sub'), { recursive: true });
   assert.equal(scratchAllowed(territories, 'a-none', path.join(pad, 'none', 'x.md')), false);
@@ -96,6 +103,7 @@ test('a scratch line that is missing, relative, or not shaped like a workstream 
   assert.equal(scratchAllowed(territories, 'a-deep', path.join(pad, 'deep', 'sub', 'x.md')), false);
   fs.mkdirSync(path.join(projectDir, 'session-1', 'memory', 'segment'), { recursive: true });
   assert.equal(scratchAllowed(territories, 'a-segment', path.join(projectDir, 'session-1', 'memory', 'segment', 'x.md')), false);
+  assert.equal(scratchAllowed(territories, 'a-outside', path.join(os.tmpdir(), 'not-claude', 'scratchpad', 'outside', 'x.md')), false);
 });
 
 test('an architect no territory names gets no scratch allowance', (t) => {
