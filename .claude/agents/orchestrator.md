@@ -171,13 +171,22 @@ first.
   # billing — contribution 2026-10-01-invoicing
   src/billing/*
   contributions/in-progress/2026-10-01-invoicing/billing/*
+  scratch <scratchpad>/billing
   agent <agent id>
   ```
 
-  Write the globs before the spawn. Add the `agent` line from the spawn result as soon as
-  it returns. An architect denied with "no territory names architect <id>" means that line
-  is missing or the id changed on a resume. Add the id it names as another `agent` line.
-  Several are fine.
+  Write the globs and the `scratch` line before the spawn. The `scratch` line is the absolute
+  path of this session's `<scratchpad>/<workstream>` folder, the one the brief's **Scratch**
+  line names. Spell it with forward slashes (`scratch C:/Users/…/scratchpad/billing`) and pass
+  each line to `printf` as an argument (`printf '%s\n' 'src/billing/*' 'scratch C:/…/billing'`),
+  never inside its format string, where `\b` or `\n` in a backslashed path become control
+  characters. Then read the file back. Outside the repo, the write guard lets the architect
+  write only strictly inside that folder. It ignores a `scratch` line that isn't shaped
+  `<tmpdir>/claude/<project>/<session>/scratchpad/<territory name>`, and with no valid line
+  the architect can write nothing outside the repo. Add the
+  `agent` line from the spawn result as soon as it returns. An architect denied with "no
+  territory names architect <id>" means that line is missing or the id changed on a resume.
+  Add the id it names as another `agent` line. Several are fine.
 - **Moving a file between territories** (a loan of a reserve file, or a hand-over between
   workstreams) happens only while both holders are quiet: their turn has ended, or they have
   confirmed by message that they aren't touching it. Shrink the giver's territory before
@@ -228,8 +237,9 @@ it sends you a NEEDS report, and you make the change or refuse it:
    only when it depends on nothing that's still out. An architect can also start early with
    a territory that holds only its folder, orienting and planning while it waits.
 
-**The scratchpad is shared by every agent in the session.** Every brief says to prefix
-scratch paths with the workstream name, use the scratchpad path, and never write to `/tmp`.
+**The scratchpad is shared by every agent in the session.** Every brief gives the architect
+its own `<scratchpad>/<workstream>/` folder, the one its territory's `scratch` line
+registers, and says never to write to `/tmp`.
 
 ## The architect's brief
 

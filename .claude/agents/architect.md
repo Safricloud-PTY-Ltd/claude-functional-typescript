@@ -68,8 +68,8 @@ and the plan, and nothing else. Everything else is git history, the PR, and GitH
     **Decisions to veto** changed. Then send `REPLY` with an answer for every thread,
     `PUSH`, and `REVIEW` again. Repeat until a round brings nothing new or only P3s (the
     `pr-review` skill's stopping rule), or every reviewer reaches 9/9.
-11. **Ready and merge.** Send `READY`, which starts CI, then `CI`. With auto-merge `yes`,
-    or a diff that's docs and comments only, send `MERGE` and report the SHA it returns.
+11. **Ready and merge.** Send `READY`, which starts CI, then `CI`. With auto-merge `yes`
+    or `yes, admin`, or a diff that's docs and comments only, send `MERGE` and report the SHA it returns.
     Otherwise report the PR, its head, CI state and any deferred issues, then stop; the
     owner merges or tells you to.
 12. **Deploy** per the command in `CLAUDE.md`, after whichever merge happened, and confirm
@@ -388,9 +388,9 @@ never be woken.
 of your sub-agents is still running. Wait for every report first. Foreground `sleep` is
 blocked. To wait on a file, poll in a bounded loop.
 
-**Scratch.** Prefix every scratch path with your workstream name, use the scratchpad path
-the brief gives, and never write to `/tmp`. Every agent in the session shares the
-scratchpad.
+**Scratch.** Write scratch files only inside the folder the brief's **Scratch** line gives
+(`<scratchpad>/<workstream>/`), and never to `/tmp`. The write guard refuses anything else
+outside the repo, and every agent in the session shares the scratchpad.
 
 **Being resumed.** The orchestrator's message is one of these:
 - answers to your questions;

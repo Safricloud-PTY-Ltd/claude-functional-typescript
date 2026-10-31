@@ -3,7 +3,8 @@
 #
 #   main session (no agent_id)  unrestricted: the orchestrator, or a solo architect
 #   architect (a sub-agent)     only inside the territory that names its agent id, and inside
-#                               no other territory
+#                               no other territory; outside the repo, only inside the folder
+#                               its territory registers with a `scratch <path>` line
 #   test-writer                 only *.test.ts(x) / *.test-d.ts(x) under src/, beside an existing
 #                               contract (<base>.ts or <base>.tsx)
 #   implementor                 only existing files under src/ that carry an @stub marker,

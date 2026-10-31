@@ -11,3 +11,16 @@ allowBuilds:
   lefthook: true
   unrs-resolver: true
 minimumReleaseAge: 1440
+
+# Advisory fixes in dev tooling whose parents, at their latest, still pin a vulnerable range
+# (pnpm audit on a fresh bootstrap, 2026-10-31). Drop each once its parent moves past it.
+#   qs: GHSA-6pq8-jhm2-2vcw and four others, via @stryker-mutator/core > typed-rest-client.
+#   deepmerge-ts: high, via eslint-plugin-functional (which asks for ^7); `pnpm lint` passes on 8.
+#   esbuild: the dev-server CORS advisory, via drizzle-kit > @esbuild-kit/core-utils (~0.18);
+#     inert until drizzle-kit is installed.
+# minimatch <11.0.1 (GHSA-g3hv-75wg-m249, moderate) is left alone: eslint asks for ^10, and a
+#   moderate ReDoS in lint globs we write doesn't earn a major-version override under eslint.
+overrides:
+  qs: ^6.16.1
+  deepmerge-ts: ^8.0.0
+  '@esbuild-kit/core-utils>esbuild': ^0.25.0
