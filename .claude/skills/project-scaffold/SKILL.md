@@ -58,13 +58,15 @@ package versions (see "Versions" below); copy them as they are, then adjust with
 
    Add `drizzle-orm drizzle-zod` and `-D drizzle-kit` when the project has a database, and
    add all three to `knip.json` `ignoreDependencies` until knip finds them on its own (an
-   import for the first two, a drizzle config for the CLI), for the reason `neverthrow` and
-   `zod` are there. `esbuild`, which drizzle-kit pulls in, is already in
-   `allowBuilds` as `false` (its binary is an optional dependency; the script only validates).
+   import for the first two, a drizzle config for the CLI), for the reason `zod` is there
+   (installed before any code imports it). `esbuild`, which drizzle-kit pulls in, is already in
+   `allowBuilds` as `false` (its binary is an optional dependency; the script only validates),
+   and drizzle-kit's old `@esbuild-kit/core-utils` esbuild is already overridden.
 
-3. Run `pnpm check` and `pnpm coverage`. On the starter tree both pass, with two test files
-   (`src/shared/errors.test.ts`, and `src/shared/index.test.ts`, the barrel's acceptance test
-   that every module has) and an empty domain list.
+3. Run `pnpm check` and `pnpm coverage`. On the starter tree both pass, with four test files
+   (`src/shared/errors.test.ts`; `src/shared/index.test.ts`, the barrel's acceptance test
+   that every module has; and the type tests `src/shared/brand.test-d.ts` and
+   `src/shared/index.test-d.ts`) and an empty domain list.
    If a step fails here, the environment differs from the validated one; fix the environment
    before touching the configs.
 4. Fill in `CLAUDE.md`'s project paragraph and the `build`, `e2e`, and deploy commands.
@@ -135,6 +137,24 @@ untracked). Measured here the same day: with `lefthook.yml` present, knip
 6.43.0 still reports `lefthook` as an unused devDependency when it leaves
 `ignoreDependencies`, so it stays there.
 
+Re-validated on 2026-10-31 (genesys-billing-manager, a fresh bootstrap with drizzle; then
+these assets bootstrapped again in a scratch project) with knip 6.44.0, eslint 10.13, vitest
+5.0.5, pnpm 11.25. Three changes came of it:
+- **`neverthrow` leaves `ignoreDependencies`.** The starter tree's `src/shared/index.test.ts`
+  imports it, and knip is clean without the entry.
+- **`lefthook` stays, and here is why.** Knip's Lefthook plugin counts `lefthook` as used only
+  while lefthook's git hooks are installed in `.git/hooks`. In a checkout with them, knip
+  prints the hint "Remove from ignoreDependencies" (a hint, exit 0). Without them (a fresh
+  clone, a failed `lefthook install`) it reports an unused devDependency and fails. Measured
+  both ways in one repo by moving the hooks aside. So the hint is not a reason to remove it.
+- **Type tests and audit overrides.** `knip.json` lists `src/**/*.test-d.{ts,tsx}` as
+  entries, because knip's vitest plugin reads only `test.include`, not `typecheck.include`,
+  and would report every type test as unused. The starter tree gains `Brand` type tests. A
+  fresh bootstrap's `pnpm audit` shows 7 advisories, 1 high, all in dev tooling. The
+  `overrides` in `pnpm-workspace.yaml` (`qs`, `deepmerge-ts`, drizzle-kit's esbuild) take it
+  to 1 moderate (`minimatch` under eslint, left alone; the file says why), with and without
+  drizzle installed. `drizzle-kit generate` wrote a correct migration under them.
+
 When a tool's major version changes, re-run every script, re-check the negative cases (a
 `let`, a nested named function, a `throw` in core, a `core/` → `shell/` import, a cross-domain
 internal import), and update this section.
@@ -144,7 +164,7 @@ internal import), and update this section.
 ```
 assets/
   package.json               scripts, engines, #* imports map
-  pnpm-workspace.yaml        allowBuilds, minimumReleaseAge
+  pnpm-workspace.yaml        allowBuilds, minimumReleaseAge, audit overrides for dev tooling
   tsconfig.json
   eslint.config.js
   .prettierrc.json  .prettierignore
@@ -162,5 +182,7 @@ assets/
   src/shared/errors.test.ts  keeps coverage green on the starter tree
   src/shared/index.test.ts   the barrel's acceptance test; also pins that a module's own
                              index.test.ts may import its barrel (no-own-barrel exempts it)
+  src/shared/brand.test-d.ts  type tests for Brand's nominal separation (2026-10-31)
+  src/shared/index.test-d.ts  the barrel's type-level acceptance test (Brand re-export)
   src/app/main.ts            composition-root placeholder
 ```

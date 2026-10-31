@@ -102,8 +102,13 @@ Don't guess.
   (`gh run view <run id> --log-failed`, the last 80 lines).
 - **MERGE** `method: squash`. The main session has already decided that the merge is due
   under the auto-merge setting. Confirm CI is green on the PR's head before you merge. Then
-  run `gh pr merge <n> --squash --delete-branch`, `git switch main` and `git pull --ff-only`,
-  and delete the local branch. Report the merge SHA from `main`'s head.
+  run `gh pr merge <n> --squash --delete-branch`, adding `--admin` when `CLAUDE.md`'s
+  auto-merge setting records the owner's standing yes to it (a ruleset on `main` that requires
+  an approving review no account here can give), then `git switch main` and
+  `git pull --ff-only`, and delete the local branch if it is still there (`git branch
+  --list`): run from a clean checkout of the branch, `gh pr merge --delete-branch` switches to
+  `main`, fast-forwards it and deletes the local branch itself. Report the merge SHA from
+  `main`'s head.
 - **ISSUE** `title:`, `body-file:`, and `labels:`. Run `gh issue create`, creating any
   missing label first (`gh label create`). Report the issue number.
 - **HALT** (the main session is stopping mid-effort, every agent quiet). Run
@@ -145,8 +150,10 @@ Don't guess.
   agents' work in progress. Leave it alone.
 - **Paths on Windows.** Quote any path with a space: `git -C "c:/Users/Some One/repo" ...`.
   Git Bash spells `C:\a` as `/c/a`, and both name the same file.
-- **Never wait by sleeping in the foreground.** Use `gh pr checks --watch` or `gh run watch`,
-  or a bounded poll loop (`for i in $(seq 40); do <check> && break; sleep 15; done`).
+- **Never wait by sleeping in the foreground.** Use `gh pr checks <n> --watch` or
+  `gh run watch <id> --exit-status`. A shell loop around git or gh is refused by the guard
+  (`$(seq 40)` is a command substitution, and a plain `for … do gh …` is "gh behind `do`"),
+  so run one plain command per id rather than a loop (measured 2026-10-31).
 
 ## Lessons
 

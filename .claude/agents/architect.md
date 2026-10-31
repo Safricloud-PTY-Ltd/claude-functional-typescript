@@ -388,9 +388,9 @@ never be woken.
 of your sub-agents is still running. Wait for every report first. Foreground `sleep` is
 blocked. To wait on a file, poll in a bounded loop.
 
-**Scratch.** Prefix every scratch path with your workstream name, use the scratchpad path
-the brief gives, and never write to `/tmp`. Every agent in the session shares the
-scratchpad.
+**Scratch.** Write scratch files only inside the folder the brief's **Scratch** line gives
+(`<scratchpad>/<workstream>/`), and never to `/tmp`. The write guard refuses anything else
+outside the repo, and every agent in the session shares the scratchpad.
 
 **Being resumed.** The orchestrator's message is one of these:
 - answers to your questions;
