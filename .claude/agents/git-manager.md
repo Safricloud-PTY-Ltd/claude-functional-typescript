@@ -133,8 +133,11 @@ Don't guess.
   (`feat|fix|chore/<id>`), naming that branch (or `HEAD`). The other options it accepts are
   `-q`, `-v`, `-n`, `--porcelain`, `--force-if-includes` and `-o`, each spelled out on its
   own. The push runs alone in its own Bash call, with nothing chained before or after it.
-  No global options or environment variables go in front, and no push goes out while
-  `remote.<name>.push` is configured. Everything else is refused: other branches, other
+  No environment variables go in front, and of the global options only `-C <dir>` and
+  `--no-pager`: with `git -C "<checkout>" push origin <branch>` the guard checks that
+  checkout's branch and config, which is how a push in another repo's checkout goes out (the
+  shell restarts in the session's repo before every call, so a `cd` never carries over;
+  measured 2026-10-31). No push goes out while `remote.<name>.push` is configured. Everything else is refused: other branches, other
   refspec forms, deletes, `--repo`, `--tags`, `--no-verify`. Don't look for a way around
   it, because the main session would have to authorise any exception, and it won't.
 - **Plain commands.** The guard reads every git and gh command and refuses what it can't
