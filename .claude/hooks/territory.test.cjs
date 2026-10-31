@@ -9,6 +9,8 @@ const { spawnSync } = require('node:child_process');
 const { load, refusal, scratchAllowed, scratchNote } = require('./territory.cjs');
 
 const fwd = (p) => p.split(path.sep).join('/');
+// Git Bash spells C:\a as /c/a; fromShell turns it back.
+const shell = (p) => fwd(p).replace(/^([A-Za-z]):/, (_, d) => `/${d.toLowerCase()}`);
 
 // A fake session scratchpad at <tmpdir>/claude/<project>/<session>/scratchpad, the shape the
 // guard requires, and a fake repo whose .claude/territories hold the given files.
@@ -36,14 +38,12 @@ test('an architect may write strictly inside its registered scratch folder, in a
   assert.equal(scratchAllowed(territories, 'a-billing', inBilling), true);
   assert.equal(scratchAllowed(territories, 'a-billing', fwd(inBilling)), true);
   if (process.platform === 'win32') {
-    const shell = (p) => fwd(p).replace(/^([A-Za-z]):/, (_, d) => `/${d.toLowerCase()}`);
     assert.equal(scratchAllowed(territories, 'a-billing', path.join(pad, 'BILLING', 'x.md')), true);
     assert.equal(scratchAllowed(territories, 'a-billing', shell(inBilling)), true);
   }
 });
 
 test('a scratch line in Git Bash spelling registers the same folder', { skip: process.platform !== 'win32' }, (t) => {
-  const shell = (p) => fwd(p).replace(/^([A-Za-z]):/, (_, d) => `/${d.toLowerCase()}`);
   const { pad, territories } = setup(t, ({ pad: p }) => ({ billing: `src/billing/*\nscratch ${shell(path.join(p, 'billing'))}\nagent a-billing\n` }));
   assert.equal(scratchAllowed(territories, 'a-billing', path.join(pad, 'billing', 'x.md')), true);
 });
@@ -76,13 +76,15 @@ test('another session or project with the same workstream name is refused', (t) 
 });
 
 test('a scratch line that is missing, relative, or not shaped like a workstream folder registers nothing', (t) => {
-  const { pad, territories } = setup(t, ({ pad: p }) => ({
+  const { pad, projectDir, territories } = setup(t, ({ pad: p, projectDir: d }) => ({
     none: 'src/none/*\nagent a-none\n',
     relative: 'src/relative/*\nscratch scratchpad/relative\nagent a-relative\n',
     root: `src/root/*\nscratch ${fwd(p)}\nagent a-root\n`,
     tmp: `src/tmp/*\nscratch ${fwd(os.tmpdir())}\nagent a-tmp\n`,
     wrongname: `src/wrongname/*\nscratch ${fwd(path.join(p, 'billing'))}\nagent a-wrongname\n`,
     deep: `src/deep/*\nscratch ${fwd(path.join(p, 'deep', 'sub'))}\nagent a-deep\n`,
+    // Four segments under <tmpdir>/claude, the right length, but the third isn't `scratchpad`.
+    segment: `src/segment/*\nscratch ${fwd(path.join(d, 'session-1', 'memory', 'segment'))}\nagent a-segment\n`,
   }));
   fs.mkdirSync(path.join(pad, 'deep', 'sub'), { recursive: true });
   assert.equal(scratchAllowed(territories, 'a-none', path.join(pad, 'none', 'x.md')), false);
@@ -92,6 +94,8 @@ test('a scratch line that is missing, relative, or not shaped like a workstream 
   assert.equal(scratchAllowed(territories, 'a-tmp', path.join(os.tmpdir(), 'x.md')), false);
   assert.equal(scratchAllowed(territories, 'a-wrongname', path.join(pad, 'billing', 'x.md')), false);
   assert.equal(scratchAllowed(territories, 'a-deep', path.join(pad, 'deep', 'sub', 'x.md')), false);
+  fs.mkdirSync(path.join(projectDir, 'session-1', 'memory', 'segment'), { recursive: true });
+  assert.equal(scratchAllowed(territories, 'a-segment', path.join(projectDir, 'session-1', 'memory', 'segment', 'x.md')), false);
 });
 
 test('an architect no territory names gets no scratch allowance', (t) => {
