@@ -12,7 +12,7 @@
 // start and resume block until codex exits; run them with the Bash tool's run_in_background.
 //
 // <allowed.txt>: one repo-relative path per line, the only files the brief may create or edit.
-// <outdir>: a fresh directory under the scratchpad, one per brief (e.g. .../scratchpad/runtime/codex/I-runtime-3.2).
+// <outdir>: a fresh directory under the scratchpad, one per brief (e.g. .../scratchpad/runtime/codex/I-runtime-3.2/run).
 'use strict';
 const fs = require('node:fs');
 const path = require('node:path');
@@ -117,15 +117,27 @@ function run(outdir, mode) {
   fs.writeFileSync(path.join(outdir, `exit-${n}`), String(r.status ?? 1));
 }
 
+// The other briefs' meta.json files next to this one, so the report can attribute a file to the
+// concurrent brief that was allowed it. The skill's layout is <scratch>/<ws>/codex/<brief id>/run,
+// so siblings are codex/*/run/meta.json; an outdir not named `run` is the older flat layout,
+// codex/<brief id>, whose siblings are codex/*/meta.json. A meta.json caught mid-write is skipped.
+function findSiblings(outdir) {
+  const self = path.resolve(outdir);
+  const nested = path.basename(self) === 'run';
+  const root = nested ? path.dirname(path.dirname(self)) : path.dirname(self);
+  const metaOf = (d) => (nested ? path.join(root, d, 'run', 'meta.json') : path.join(root, d, 'meta.json'));
+  const parse = (p) => { try { return JSON.parse(read(p)); } catch { return undefined; } };
+  return fs.readdirSync(root).map(metaOf)
+    .filter((p) => path.dirname(p) !== self && fs.existsSync(p))
+    .map(parse).filter((m) => m && Array.isArray(m.allowed));
+}
+
 function report(outdir, meta, n, status) {
   const before = JSON.parse(read(path.join(outdir, 'before.json')));
   const after = snapshot();
   const allowed = new Set(meta.allowed);
   const territories = territory.load(ROOT);
-  const parent = path.dirname(outdir);
-  const siblings = fs.readdirSync(parent).filter((d) => d !== path.basename(outdir))
-    .map((d) => path.join(parent, d, 'meta.json')).filter((p) => fs.existsSync(p))
-    .map((p) => JSON.parse(read(p)));
+  const siblings = findSiblings(outdir);
   const changed = [...new Set([...Object.keys(before), ...Object.keys(after)])]
     .filter((f) => before[f] !== after[f]).sort();
   const lines = changed.map((f) => {
@@ -179,8 +191,12 @@ function wait(outdir, seconds) {
   process.stdout.write(read(path.join(outdir, 'report.md')) + '\n');
 }
 
-const [cmd, ...a] = process.argv.slice(2);
-if (cmd === 'start') {
+module.exports = { findSiblings };
+
+const [cmd, ...a] = require.main === module ? process.argv.slice(2) : ['--required'];
+if (cmd === '--required') {
+  // Loaded by a test: no CLI.
+} else if (cmd === 'start') {
   const [role, workstream, briefFile, allowedFile, outdir, effortArg] = a;
   if (!['test-writer', 'implementor'].includes(role) || !outdir) die('usage: start <test-writer|implementor> <workstream> <brief.md> <allowed.txt> <outdir> [effort]');
   if (!CODEX_JS) die('codex CLI not found (npm i -g @openai/codex, or set CODEX_JS to its bin/codex.js)');
