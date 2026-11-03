@@ -32,7 +32,13 @@ export default defineConfig(
   {
     languageOptions: {
       parserOptions: {
-        projectService: { allowDefaultProject: ['*.config.js', '*.config.ts'] },
+        projectService: {
+          allowDefaultProject: ['*.config.js', '*.config.ts', 'packages/*/*.config.ts'],
+          // Every package adds its vitest.config.ts (and maybe a drizzle config) to the default
+          // project, whose cap is 8 files: 2 root configs and 7 packages failed `pnpm lint` with
+          // "Too many files (>8)" (measured 2026-11-03). Config files are few and small.
+          maximumDefaultProjectFileMatchCount_THIS_WILL_SLOW_DOWN_LINTING: 64,
+        },
         tsconfigRootDir: import.meta.dirname,
       },
     },
@@ -152,7 +158,11 @@ export default defineConfig(
 
   // Shell adapters convert a foreign, throwing API into Results.
   {
-    files: ['src/**/shell/**/*.{ts,tsx}', 'src/app/**/*.{ts,tsx}', 'src/shared/stub.ts'],
+    files: [
+      'packages/*/src/**/shell/**/*.{ts,tsx}',
+      'packages/*/src/app/**/*.{ts,tsx}',
+      'packages/shared/src/stub.ts',
+    ],
     rules: {
       'functional/no-throw-statements': 'off',
       'functional/no-try-statements': 'off',
@@ -175,9 +185,9 @@ export default defineConfig(
   },
 
   // Config files are not domain code. The size rules are off too: this file itself is past
-  // max-lines (161 counted lines against 150, issue #14).
+  // max-lines (issue #14).
   {
-    files: ['*.config.js', '*.config.ts'],
+    files: ['*.config.js', '*.config.ts', 'packages/*/*.config.ts'],
     rules: {
       'import-x/no-default-export': 'off',
       'no-restricted-syntax': 'off',

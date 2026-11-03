@@ -1,13 +1,19 @@
 /* Architecture rules. `pnpm deps` fails on any violation.
  *
- * The model: every directory under src/ is a module and its index.ts is the only door.
- * Modules nest to any depth (MAX_DEPTH directories below src/). Inside a module, files
- * import each other relatively and may reach into a parent's files; nothing outside a
+ * The model: the repo is a pnpm workspace of packages under packages/, each with its own src/.
+ * Every directory under a package's src/ is a module and its index.ts is the only door.
+ * Modules nest to any depth (MAX_DEPTH directories below a package's src/). Inside a module,
+ * files import each other relatively and may reach into a parent's files; nothing outside a
  * module reaches past its index.ts. Rules are generated per depth because the matcher
  * is regex-based; $1 in `to` refers to the capture group in `from.path`.
+ *
+ * Across packages, the only import is of packages/shared, through its barrel (as `#shared`):
+ * shared imports nothing from the workspace, and no package imports another. A package's
+ * src/app/ is its composition root, and nothing outside it imports it.
  */
 const MAX_DEPTH = 5;
-const dirs = (n) => `src${'/[^/]+'.repeat(n)}`;
+const SRC = 'packages/[^/]+/src';
+const dirs = (n) => `${SRC}${'/[^/]+'.repeat(n)}`;
 
 const perDepth = (n) => [
   {
@@ -21,7 +27,7 @@ const perDepth = (n) => [
     name: `module-boundary-${n}-from-above`,
     comment: 'From shallower than depth n into a depth-n module: only its index.ts',
     severity: 'error',
-    from: { path: '^src/', pathNot: `^${dirs(n)}/` },
+    from: { path: `^${SRC}/`, pathNot: `^${dirs(n)}/` },
     to: { path: `^${dirs(n)}/`, pathNot: `^${dirs(n)}/index\\.ts$` },
   },
   {
@@ -56,15 +62,17 @@ module.exports = {
         pathNot: [
           '\\.test\\.tsx?$',
           '\\.test-d\\.tsx?$',
-          '^src/shared/stub\\.ts$',
-          '^src/app/main\\.ts$',
+          '^packages/shared/src/stub\\.ts$',
+          '^packages/[^/]+/src/app/main\\.ts$',
+          // Each package's own vitest config is read by the root run, not imported.
+          '^packages/[^/]+/vitest\\.config\\.ts$',
         ],
       },
       to: {},
     },
     {
       name: 'max-depth',
-      comment: `No module deeper than ${MAX_DEPTH} directories below src/`,
+      comment: `No module deeper than ${MAX_DEPTH} directories below a package's src/`,
       severity: 'error',
       from: {},
       to: { path: `^${dirs(MAX_DEPTH + 1)}/` },
@@ -74,31 +82,51 @@ module.exports = {
       comment: 'core/ may not import shell/ or app/',
       severity: 'error',
       from: { path: '/core/' },
-      to: { path: ['/shell/', '^src/app/'] },
+      to: { path: ['/shell/', '^packages/[^/]+/src/app/'] },
     },
     {
       name: 'core-has-no-dependencies',
       comment:
-        'Third-party packages and node builtins live behind adapters in shell/; core uses only neverthrow',
+        'Third-party packages and node builtins live behind adapters in shell/; core uses only neverthrow and #shared',
       severity: 'error',
       from: { path: '/core/' },
       to: {
         dependencyTypesNot: ['local', 'aliased', 'aliased-subpath-import', 'type-only'],
-        pathNot: ['node_modules/neverthrow/', 'node_modules/fast-check/', 'node_modules/vitest/'],
+        pathNot: [
+          'node_modules/neverthrow/',
+          'node_modules/fast-check/',
+          'node_modules/vitest/',
+          '^packages/shared/',
+        ],
       },
     },
     {
       name: 'shared-is-leaf',
-      comment: 'shared/ imports nothing from domains or app',
+      comment: 'shared imports nothing from the workspace',
       severity: 'error',
-      from: { path: '^src/shared/' },
-      to: { path: '^src/(?!shared/)' },
+      from: { path: '^packages/shared/' },
+      to: { path: '^packages/(?!shared/)' },
+    },
+    {
+      name: 'cross-package-only-shared',
+      comment: 'A package imports another package only when that package is shared',
+      severity: 'error',
+      from: { path: '^packages/([^/]+)/' },
+      to: { path: '^packages/', pathNot: ['^packages/$1/', '^packages/shared/'] },
+    },
+    {
+      name: 'shared-only-through-its-barrel',
+      comment: 'Outside shared, only its index.ts is reachable',
+      severity: 'error',
+      from: { pathNot: '^packages/shared/' },
+      to: { path: '^packages/shared/', pathNot: '^packages/shared/src/index\\.ts$' },
     },
     {
       name: 'nobody-imports-app',
+      comment: "A package's src/app/ is its composition root; nothing outside it imports it",
       severity: 'error',
-      from: { path: '^src/(?!app/)' },
-      to: { path: '^src/app/' },
+      from: { path: '^packages/', pathNot: '^packages/[^/]+/src/app/' },
+      to: { path: '^packages/[^/]+/src/app/' },
     },
     {
       name: 'no-test-imports-in-prod',
@@ -106,7 +134,9 @@ module.exports = {
       from: { pathNot: '\\.test(-d)?\\.tsx?$' },
       to: { path: '\\.test(-d)?\\.tsx?$' },
     },
-    ...Array.from({ length: MAX_DEPTH }, (_, i) => perDepth(i + 1)).flat(),
+    // Depth 0 is a package's src/ itself: packages/shared/src/index.ts is a barrel at depth 0,
+    // so its barrel-only and own-barrel rules come from perDepth(0) (PR #22 review, round 1).
+    ...Array.from({ length: MAX_DEPTH + 1 }, (_, i) => perDepth(i)).flat(),
   ],
   options: {
     doNotFollow: { path: 'node_modules' },

@@ -73,7 +73,7 @@ still holds; only the way a brief is dispatched changes.
    ```
 
 5. **Verify yourself, always**: run the brief's validation commands and, because no hook ran,
-   `pnpm exec tsgo --noEmit | grep -F src/<domain>/` and `pnpm exec eslint --max-warnings 0 <paths>`
+   `pnpm exec tsgo --noEmit | grep -F packages/<pkg>/src/<domain>/` and `pnpm exec eslint --max-warnings 0 <paths>`
    on the files it touched. Then the usual phase verification and your commit.
 
 ## Notes

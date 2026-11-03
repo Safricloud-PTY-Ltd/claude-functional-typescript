@@ -1,0 +1,17 @@
+{
+  "name": "@<project-name>/app",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "The application: its composition root in src/app/ and its domains beside it. Node 24 runs the TypeScript source directly.",
+  "imports": {
+    "#shared": "@<project-name>/shared",
+    "#*": "./src/*/index.ts"
+  },
+  "scripts": {
+    "start": "node src/app/main.ts"
+  },
+  "dependencies": {
+    "@<project-name>/shared": "workspace:*"
+  }
+}

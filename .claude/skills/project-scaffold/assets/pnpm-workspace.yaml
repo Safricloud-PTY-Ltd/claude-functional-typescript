@@ -1,3 +1,7 @@
+# The workspace: every package lives in packages/<name>/ with its own package.json and src/.
+packages:
+  - packages/*
+
 # Supply-chain settings.
 # allowBuilds: pnpm refuses to run install scripts unless the package is listed here.
 #   lefthook installs the git hooks; unrs-resolver fetches the resolver's native binding.

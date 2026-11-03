@@ -5,10 +5,12 @@
 #   architect (a sub-agent)     only inside the territory that names its agent id, and inside
 #                               no other territory; outside the repo, only inside the folder
 #                               its territory registers with a `scratch <path>` line
-#   test-writer                 only *.test.ts(x) / *.test-d.ts(x) under src/, beside an existing
-#                               contract (<base>.ts or <base>.tsx)
-#   implementor                 only existing files under src/ that carry an @stub marker,
-#                               or a file it already holds; never tests, never new files
+#   test-writer                 only *.test.ts(x) / *.test-d.ts(x) under packages/<pkg>/src/ (or
+#                               src/ in a repo bootstrapped before the workspace layout), beside
+#                               an existing contract (<base>.ts or <base>.tsx)
+#   implementor                 only existing files under packages/<pkg>/src/ (or src/, as above)
+#                               that carry an @stub marker, or a file it already holds; never
+#                               tests, never new files
 #   test-writer, implementor    also inside exactly one territory, whenever any territory exists
 #   any file                    at most one sub-agent owner per phase (.claude/locks; an
 #                               architect releases its own locks before each phase,
@@ -56,7 +58,9 @@ verdict=$(node "$root/.claude/hooks/territory.cjs" "$agent_id" "$agent_type" "$p
 [[ -n "$rel" ]] || deny "$agent_type may only write inside the repository (asked for $path)."
 path="$root/$rel"
 
-[[ "$rel" == src/* ]] || deny "$agent_type may only write under src/ (asked for $rel). Put the need in your report."
+# Both roots: a repo bootstrapped before the workspace layout keeps src/ and takes this guard
+# on its next `--force` upgrade (PR #22 review, round 1).
+[[ "$rel" =~ ^(packages/[^/]+/)?src/ ]] || deny "$agent_type may only write under packages/<pkg>/src/, or src/ in a repo bootstrapped before the workspace layout (asked for $rel). Put the need in your report."
 
 is_test=0
 case "$rel" in *.test.ts|*.test-d.ts|*.test.tsx|*.test-d.tsx) is_test=1 ;; esac

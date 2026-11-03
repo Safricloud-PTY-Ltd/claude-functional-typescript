@@ -14,28 +14,34 @@ argue with it, report it to the architect if you think it's wrong.
 
 ## Layout
 
-Every directory under `src/` is a module, and a module's `index.ts` is its only door.
-Modules nest: a domain is a module that contains modules, which may contain modules, down
-to five directories below `src/` (enforced).
+The repo is a pnpm workspace. Each package is `packages/<name>/`, with its own
+`package.json` and `src/`. Every directory under a package's `src/` is a module, and a
+module's `index.ts` is its only door. Modules nest: a domain is a module that contains
+modules, which may contain modules, down to five directories below `src/` (enforced).
+Packages reach each other only through `packages/shared`, by its barrel (enforced).
 
 ```
-src/
-  shared/                  module: primitives any other module may use — Brand, stub(), Unexpected
-    index.ts
-  <domain>/                module: one business area — orders, billing, auth, ...
-    index.ts               the domain's public API. Re-exports only. Architect-owned.
-    types.ts               domain types, error unions, zod schemas, ports (Deps)
-    core/                  module: the functional core — pure functions only
-      <concept>/           module: pricing/, validation/, ... nesting as deep as the concept needs
-        index.ts           what the concept exposes; hides representation and helpers
-        index.test.ts      black-box test through the barrel: what a replacement must pass
-        <fn>.ts            one primary export, named after the file
-        <fn>.test.ts       its contract tests, colocated
-    shell/                 module: the imperative shell — I/O behind ports
-      <adapter>/           module per external thing: db/, http/, clock/, mail/
-        index.ts           exports the real adapter and its in-memory fake
-        fake.ts            the fake; same port, no I/O; used by every test that needs the port
-  app/                     composition root: parses env, builds Deps, wires shell into core
+packages/
+  shared/                    package: primitives any other package may use — Brand, stub(), Unexpected
+    package.json             exports src/index.ts; imported everywhere else as #shared
+    src/index.ts
+  app/                       package: the application; a second deployable is a package beside it
+    package.json             imports: #shared, and #<domain> → src/<domain>/index.ts
+    src/
+      <domain>/              module: one business area — orders, billing, auth, ...
+        index.ts             the domain's public API. Re-exports only. Architect-owned.
+        types.ts             domain types, error unions, zod schemas, ports (Deps)
+        core/                module: the functional core — pure functions only
+          <concept>/         module: pricing/, validation/, ... nesting as deep as the concept needs
+            index.ts         what the concept exposes; hides representation and helpers
+            index.test.ts    black-box test through the barrel: what a replacement must pass
+            <fn>.ts          one primary export, named after the file
+            <fn>.test.ts     its contract tests, colocated
+        shell/               module: the imperative shell — I/O behind ports
+          <adapter>/         module per external thing: db/, http/, clock/, mail/
+            index.ts         exports the real adapter and its in-memory fake
+            fake.ts          the fake; same port, no I/O; used by every test that needs the port
+      app/                   composition root: parses env, builds Deps, wires shell into core
 ```
 
 - A file is named after its primary export: `lineTotal.ts` exports `lineTotal`.
@@ -58,8 +64,9 @@ three things; a directory that hides none of them is a file, not a module.
   today and could be `bigint` tomorrow without a caller changing. Transparent records are for
   boundary DTOs and for types whose shape _is_ the contract, never for a module's own data.
 - **A dependency.** Third-party packages and node builtins are imported only inside `shell/`
-  adapter modules; `core/` may import `neverthrow` and nothing else from outside `src/`
-  (enforced). Swapping drizzle, the HTTP client, or the mailer is one module's diff.
+  adapter modules; `core/` may import `neverthrow` and `#shared` and nothing else from
+  outside its package's `src/` (enforced). Swapping drizzle, the HTTP client, or the mailer
+  is one module's diff.
 - **A choice of implementation.** A port with a real adapter and an in-memory fake, or an
   algorithm with a plausible alternative. The fake is mandatory for every port: writing it is
   what proves the port doesn't leak the real implementation, and tests use it instead of mocks.
@@ -87,12 +94,17 @@ draw.
   extension is not optional: Node runs the source directly and needs it.
 - Into another module: its `index.ts` and nothing deeper (enforced at every depth). For a
   top-level module use the subpath alias — `import { lineTotal } from '#orders'`;
-  `#<name>` resolves to `src/<name>/index.ts` and to nothing else.
-- `shared/` is imported as `#shared` from anywhere. `shared/` imports nothing from domains.
+  `#<name>` resolves to the package's own `src/<name>/index.ts` and to nothing else.
+  `packages/shared` maps no `#*`, so its top-level modules reach each other relatively,
+  through the barrel (`../math/index.ts`).
+- `packages/shared` is imported as `#shared` from any package, and resolves to its barrel.
+  It imports nothing from the workspace. No package imports another package except
+  `shared` (enforced).
 - A module never imports its own barrel (enforced). Barrels import nothing from outside
   their own directory (enforced).
 - `core/` never imports `shell/` or `app/`; `shell/` may import its domain's `core/`
-  barrel; `app/` may import anything; nothing imports `app/` (enforced).
+  barrel; `app/` may import anything in its package; nothing outside a package's `src/app/`
+  imports it (enforced).
 - `import type { ... }` for types. No default exports. No circular imports (enforced).
 - ESM only: no `require`, `createRequire` or `require.resolve` (enforced). To load a heavy
   module late, `await import('#name')` at a boundary that is already async (a command's
@@ -153,8 +165,8 @@ Result (enforced by `eslint-plugin-neverthrow`).
 - The shell edge is the only place exceptions exist. Wrap them at the boundary with
   `ResultAsync.fromPromise(p, toUnexpected)` or `Result.fromThrowable(fn, toUnexpected)`;
   `Unexpected` (in `shared/`) is the kind for failures nobody planned for.
-- No `try`/`catch` in core. No `throw` anywhere except `shared/stub.ts` and shell adapters
-  converting a foreign API.
+- No `try`/`catch` in core. No `throw` anywhere except `packages/shared/src/stub.ts` and
+  shell adapters converting a foreign API.
 
 ## Contracts
 
@@ -295,7 +307,7 @@ Before reporting a file done, check it against this list; the architect will.
 - [ ] No `let`, `class`, `enum`, `any`, `null`, `throw`, `try`, mutation, or default export.
 - [ ] No function declared by an implementor; every named function has a contract.
 - [ ] Failure paths return `Result`/`ResultAsync` with a narrow, named error type.
-- [ ] Core imports nothing from shell, app, or node_modules (neverthrow aside); other modules are
-      reached only through their `index.ts`; module-owned data is opaque.
+- [ ] Core imports nothing from shell, app, or node_modules (neverthrow and `#shared` aside);
+      other modules are reached only through their `index.ts`; module-owned data is opaque.
 - [ ] Tests cover every `@param` edge case and every `@errors` kind; no mocks in core.
 - [ ] `tsc --noEmit`, `eslint`, and the file's tests pass; nothing outside the brief was touched.

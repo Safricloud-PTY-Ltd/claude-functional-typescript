@@ -132,8 +132,8 @@ post it, and say what you checked.
    <!-- or: **Verdict:** Changes suggested: 3 (P1 1, P2 1, P3 1) -->
 
    ### Findings
-   1. **P1** `src/billing/core/total.ts:42`: what is wrong, the evidence, the fix. (inline)
-   2. **P2** `src/billing/types.ts:10`: … (outside the diff; fix below)
+   1. **P1** `packages/app/src/billing/core/total.ts:42`: what is wrong, the evidence, the fix. (inline)
+   2. **P2** `packages/app/src/billing/types.ts:10`: … (outside the diff; fix below)
       ```diff
       - old
       + new
@@ -162,7 +162,7 @@ post it, and say what you checked.
      "event": "COMMENT",
      "body": "<the review body>",
      "comments": [
-       { "path": "src/billing/core/total.ts", "line": 42, "side": "RIGHT",
+       { "path": "packages/app/src/billing/core/total.ts", "line": 42, "side": "RIGHT",
          "body": "**P1**: what is wrong and why.\n\n```suggestion\n  return ok(a + b);\n```" }
      ]
    }

@@ -1,6 +1,6 @@
 ---
 name: orchestrator
-description: Runs an effort end to end as the main session. It splits the ask into workstreams, gives each one a territory (a set of files no other agent writes), spawns one architect per workstream in waves, and keeps the shared files (package.json, the lockfile, configs, src/shared, src/app, docs, .claude, CI). It asks the owner each wave's questions in one round, routes cross-territory requests between architects, and runs the full check. All its git and GitHub work (the branch, its own commits, the archive, PR, review threads, CI, merge) goes through one long-lived git-manager agent. Start sessions with `claude`; this is the default agent in .claude/settings.json.
+description: Runs an effort end to end as the main session. It splits the ask into workstreams, gives each one a territory (a set of files no other agent writes), spawns one architect per workstream in waves, and keeps the shared files (the package manifests, the lockfile, configs, packages/shared, each package's src/app, docs, .claude, CI). It asks the owner each wave's questions in one round, routes cross-territory requests between architects, and runs the full check. All its git and GitHub work (the branch, its own commits, the archive, PR, review threads, CI, merge) goes through one long-lived git-manager agent. Start sessions with `claude`; this is the default agent in .claude/settings.json.
 tools: Read, Write, Edit, Grep, Glob, Bash, WebFetch, WebSearch, TodoWrite, Skill, SendMessage, AskUserQuestion, Agent(architect, git-manager, test-writer, implementor, Explore)
 skills:
   - code-standards
@@ -37,12 +37,14 @@ first one.
 ## Words
 
 - **Workstream**: one architect's part of the ask, named by a short slug (`billing`,
-  `ledger`). Usually one domain, `src/<domain>/`, sometimes a few that only it touches.
+  `ledger`). Usually one domain, `packages/<pkg>/src/<domain>/`, sometimes a few that only
+  it touches.
 - **Territory**: the files a workstream may write, as globs in
   `.claude/territories/<workstream>`.
 - **Reserve**: every file in no territory. It's yours: `package.json`, `pnpm-lock.yaml`,
   `pnpm-workspace.yaml`, `tsconfig*.json`, the tool configs (eslint, prettier, vitest, knip,
-  dependency-cruiser, stryker, lefthook), `src/shared/`, `src/app/` (the composition root),
+  dependency-cruiser, stryker, lefthook), each package's `package.json` and
+  `vitest.config.ts`, `packages/shared/`, each package's `src/app/` (its composition root),
   `CLAUDE.md`, `CONTRIBUTING.md`, `README.md`, `.claude/`, `.github/`, `docs/`, and the
   effort's own contribution folder.
 - **Wave**: the workstreams that start together. A workstream goes in the earliest wave
@@ -149,8 +151,9 @@ first.
 
 ## Drawing territories
 
-- **Follow domain lines.** `src/billing/*` is disjoint from `src/ledger/*` by
-  construction. Finer globs inside one domain (`src/billing/core/tax/*`) are allowed, but
+- **Follow domain lines.** `packages/app/src/billing/*` is disjoint from
+  `packages/app/src/ledger/*` by construction. Finer globs inside one domain
+  (`packages/app/src/billing/core/tax/*`) are allowed, but
   every workstream that imports that domain then sees the others' half-written files.
   Split a domain only when the ask forces it. A domain's `index.ts` and `types.ts` belong
   to the territory that holds the domain.
@@ -169,7 +172,7 @@ first.
 
   ```
   # billing — contribution 2026-10-01-invoicing
-  src/billing/*
+  packages/app/src/billing/*
   contributions/in-progress/2026-10-01-invoicing/billing/*
   scratch <scratchpad>/billing
   agent <agent id>
@@ -178,8 +181,9 @@ first.
   Write the globs and the `scratch` line before the spawn. The `scratch` line is the absolute
   path of this session's `<scratchpad>/<workstream>` folder, the one the brief's **Scratch**
   line names. Spell it with forward slashes (`scratch C:/Users/…/scratchpad/billing`) and pass
-  each line to `printf` as an argument (`printf '%s\n' 'src/billing/*' 'scratch C:/…/billing'`),
-  never inside its format string, where `\b` or `\n` in a backslashed path become control
+  each line to `printf` as an argument
+  (`printf '%s\n' 'packages/app/src/billing/*' 'scratch C:/…/billing'`), never inside its
+  format string, where `\b` or `\n` in a backslashed path become control
   characters. Then read the file back. Outside the repo, the write guard lets the architect
   write only strictly inside that folder. It ignores a `scratch` line that isn't shaped
   `<tmpdir>/claude/<project>/<session>/scratchpad/<territory name>`, and with no valid line
@@ -199,13 +203,18 @@ it sends you a NEEDS report, and you make the change or refuse it:
 
 - **Manifests and wiring** you edit yourself: a dependency in `package.json` (justify it in
   the plan, run `pnpm add` so the lockfile follows, and check what it pulls in), a
-  config change, wiring a domain into `src/app/`, CI.
-- **A new function or type in `src/shared/`** is code, and code goes through an architect's
-  loop. Lend the file to the architect that needs it, by adding the file's path (and its
-  test file, and `src/shared/index.ts`) to that architect's territory. Take them back when
-  it reports DONE. If two architects need the same shared file, the second one waits.
-  `src/shared/index.ts` is the queue: ask a holder for everything it needs in one NEEDS.
-- **Shared code must typecheck at every moment.** Every domain imports `src/shared`, so a
+  config change, wiring a domain into its package's `src/app/`, CI. A new package is a
+  manifest edit too, in `packages/app`'s shape: a `package.json` with the `"#shared"` and
+  `"#*"` imports and the `"@<name>/shared": "workspace:*"` dependency, a `vitest.config.ts`
+  with the `#shared` alias, and a `knip.json` workspace. Its domains then go to territories
+  like any other.
+- **A new function or type in `packages/shared/`** is code, and code goes through an
+  architect's loop. Lend the file to the architect that needs it, by adding the file's path
+  (and its test file, and `packages/shared/src/index.ts`) to that architect's territory.
+  Take them back when it reports DONE. If two architects need the same shared file, the
+  second one waits. `packages/shared/src/index.ts` is the queue: ask a holder for everything
+  it needs in one NEEDS.
+- **Shared code must typecheck at every moment.** Every domain imports `#shared`, so a
   half-written export there breaks every agent's typecheck. Tell holders: a type and its
   users in one step, one implementor at a time in a shared file.
 - **A new domain** that belongs to a workstream sits inside that workstream's territory, and
@@ -249,10 +258,10 @@ memory and nothing else.
 ```
 Workstream billing — effort 2026-10-01-invoicing, branch feat/2026-10-01-invoicing (checked out; never switch)
 Ask: <the workstream's part, one or two sentences, and the whole ask's source>
-Territory: .claude/territories/billing — src/billing/*, contributions/in-progress/2026-10-01-invoicing/billing/*
+Territory: .claude/territories/billing — packages/app/src/billing/*, contributions/in-progress/2026-10-01-invoicing/billing/*
 Your folder: contributions/in-progress/2026-10-01-invoicing/billing/ (review.md, plan.md)
 Read first: contributions/in-progress/2026-10-01-invoicing/review.md (the split)
-Reserve done for you: <dependencies added, src/app wiring, or none>
+Reserve done for you: <dependencies added, src/app/ wiring, or none>
 Depends on: <workstream: its contract paths, committed or not yet>, or none
 Siblings (don't write): <workstream: territory, one per line>
 Ids: briefs T-billing-<phase>.<item> and I-billing-<phase>.<item>; stubs // @stub billing-<phase>.<item>

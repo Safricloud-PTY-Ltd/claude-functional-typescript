@@ -40,6 +40,9 @@ tierflag=(); [[ -n "$tier" ]] && tierflag=(-c "service_tier=$tier")
 # the project directory (issue #12). CLAUDE_PROJECT_DIR can't be used, since it is set for hooks
 # but not for Bash tool commands (measured 2026-10-28).
 dir=$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && { pwd -W 2>/dev/null || pwd -P; }) || fail "could not resolve the project root"
+# Enter it before the first gh call: gh infers the repository from the working directory, so a
+# run from another checkout would read that repo's PR (measured 2026-11-03, PR #22).
+cd "$dir" || fail "could not enter $dir"
 count() {
   gh pr view "$N" --json reviews,comments \
     --jq "[.reviews[].body, .comments[].body] | map(select(startswith(\"<!-- ai-review: $R \"))) | length"
@@ -61,7 +64,6 @@ echo "request-review: $R round $round/9 on PR #$N at ${head:0:7}, from $dir ($mo
 
 # A failed earlier attempt at this round would otherwise be read back in by the reviewer.
 rm -f "$dir/$payload.json" "$dir/$payload.md"
-cd "$dir" || fail "could not enter $dir"
 case "$R" in
   codex)
     token=$(gh auth token) || fail "gh auth token failed; run gh auth login"

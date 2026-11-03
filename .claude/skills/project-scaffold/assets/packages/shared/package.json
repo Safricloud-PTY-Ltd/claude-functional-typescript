@@ -1,0 +1,10 @@
+{
+  "name": "@<project-name>/shared",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "What every package uses: brands, the Unexpected error, contract stubs.",
+  "exports": {
+    ".": "./src/index.ts"
+  }
+}
