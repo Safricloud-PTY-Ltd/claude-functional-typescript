@@ -39,7 +39,8 @@ package versions (see "Versions" below); copy them as they are, then adjust with
    `.gitignore` out of every tarball it builds, so the dotted name would never survive
    delivery, and `gitattributes` follows suit. Replace `<project-name>` with the project's
    name in the three manifests, the root's `name` and the packages' `@<project-name>/…` scope
-   (`sed -i 's/<project-name>/myproj/g' package.json packages/*/package.json`), and set
+   (`sed -i.bak 's/<project-name>/myproj/g' package.json packages/*/package.json && rm package.json.bak packages/*/package.json.bak`;
+   `-i.bak` works with GNU and BSD sed), and set
    `packageManager` to the pnpm you use (`pnpm pkg set packageManager=pnpm@$(pnpm --version)`);
    CI's `pnpm/action-setup` reads it.
 2. Install the toolchain. TypeScript is pinned to 6 because typescript-eslint's peer range excludes 7;
@@ -103,9 +104,17 @@ comment saying which contribution turns it back to `error`.
   exactly the cross-domain rule. `"#shared": "@<project-name>/shared"` comes first and maps to
   the shared package, whose `exports` is its barrel. TypeScript (`nodenext`), Vitest, ESLint's
   resolver, and dependency-cruiser all follow both.
-- **`#shared` is aliased in each package's vitest config.** Under Stryker the sandbox's
-  `node_modules` is a junction back to the original tree, so the workspace link would load
-  the unmutated shared source. The alias resolves it from the config file instead.
+- **`#shared` is aliased in the vitest config of every package that imports it** (today
+  `packages/app`'s; shared's needs none). Under Stryker the sandbox's `node_modules` is a
+  junction back to the original tree, so the workspace link would load the unmutated shared
+  source. The alias resolves it from the config file instead.
+- **Adding a package** copies `packages/app`'s shape: a `package.json` with the `"#shared"`
+  and `"#*"` imports and an `"@<project-name>/shared": "workspace:*"` dependency, a
+  `vitest.config.ts` with the alias, and a `knip.json` workspace. The root configs already
+  glob `packages/*`, and ESLint's default-project cap is raised for their config files.
+- **dependency-cruiser generates depth 0 too.** A package's `src/` is itself a module, so
+  `packages/shared/src/index.ts` is a depth-0 barrel and keeps the barrel-only and
+  own-barrel rules.
 - **Relative imports carry `.ts`.** Same reason: Node needs the extension. `allowImportingTsExtensions`
   and `rewriteRelativeImportExtensions` keep tsc happy now and if the project ever emits JS.
 - **`noEmit` in the main tsconfig.** There is no build step; `declaration: true` exists only so

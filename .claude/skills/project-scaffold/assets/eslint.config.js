@@ -34,6 +34,10 @@ export default defineConfig(
       parserOptions: {
         projectService: {
           allowDefaultProject: ['*.config.js', '*.config.ts', 'packages/*/*.config.ts'],
+          // Every package adds its vitest.config.ts (and maybe a drizzle config) to the default
+          // project, whose cap is 8 files: 2 root configs and 7 packages failed `pnpm lint` with
+          // "Too many files (>8)" (measured 2026-11-03). Config files are few and small.
+          maximumDefaultProjectFileMatchCount_THIS_WILL_SLOW_DOWN_LINTING: 64,
         },
         tsconfigRootDir: import.meta.dirname,
       },

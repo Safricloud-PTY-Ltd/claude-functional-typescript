@@ -203,9 +203,11 @@ it sends you a NEEDS report, and you make the change or refuse it:
 
 - **Manifests and wiring** you edit yourself: a dependency in `package.json` (justify it in
   the plan, run `pnpm add` so the lockfile follows, and check what it pulls in), a
-  config change, wiring a domain into its package's `src/app/`, CI. A new package (its
-  `package.json`, `vitest.config.ts`, a `knip.json` workspace) is a manifest edit too; its
-  domains then go to territories like any other.
+  config change, wiring a domain into its package's `src/app/`, CI. A new package is a
+  manifest edit too, in `packages/app`'s shape: a `package.json` with the `"#shared"` and
+  `"#*"` imports and the `"@<name>/shared": "workspace:*"` dependency, a `vitest.config.ts`
+  with the `#shared` alias, and a `knip.json` workspace. Its domains then go to territories
+  like any other.
 - **A new function or type in `packages/shared/`** is code, and code goes through an
   architect's loop. Lend the file to the architect that needs it, by adding the file's path
   (and its test file, and `packages/shared/src/index.ts`) to that architect's territory.

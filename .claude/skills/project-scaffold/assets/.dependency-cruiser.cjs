@@ -134,7 +134,9 @@ module.exports = {
       from: { pathNot: '\\.test(-d)?\\.tsx?$' },
       to: { path: '\\.test(-d)?\\.tsx?$' },
     },
-    ...Array.from({ length: MAX_DEPTH }, (_, i) => perDepth(i + 1)).flat(),
+    // Depth 0 is a package's src/ itself: packages/shared/src/index.ts is a barrel at depth 0,
+    // so its barrel-only and own-barrel rules come from perDepth(0) (PR #22 review, round 1).
+    ...Array.from({ length: MAX_DEPTH + 1 }, (_, i) => perDepth(i)).flat(),
   ],
   options: {
     doNotFollow: { path: 'node_modules' },
