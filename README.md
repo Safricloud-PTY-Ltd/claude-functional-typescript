@@ -31,7 +31,7 @@ npx --allow-git=all github:Safricloud-PTY-Ltd/claude-functional-typescript [dire
 
 Re-running is safe: existing files are kept, and the report tells you how many were skipped.
 Pass `--force` to pull in a newer version of the harness. It only ever touches the paths it
-installed, so your `src/` is never at risk — but note that `CLAUDE.md` is one of those paths,
+installed, so your `packages/` is never at risk — but note that `CLAUDE.md` is one of those paths,
 and `--force` will overwrite the project description you filled in. Commit before you use it.
 
 Requires **Node 24+**. The command has no dependencies and no build step, so it runs in a

@@ -1,7 +1,21 @@
 {
   "$schema": "https://unpkg.com/knip@latest/schema.json",
-  "entry": ["src/**/index.{ts,tsx}", "src/**/*.test-d.{ts,tsx}"],
-  "project": ["src/**/*.{ts,tsx}"],
-  "ignoreDependencies": ["lefthook", "zod"],
-  "ignoreBinaries": ["dot"]
+  "ignoreBinaries": ["dot"],
+  "ignore": [".claude/**"],
+  "workspaces": {
+    ".": {
+      "entry": [],
+      "project": [],
+      "ignoreDependencies": ["lefthook"]
+    },
+    "packages/shared": {
+      "entry": ["src/**/index.{ts,tsx}", "src/**/*.test-d.{ts,tsx}"],
+      "project": ["src/**/*.{ts,tsx}"]
+    },
+    "packages/app": {
+      "entry": ["src/**/index.{ts,tsx}", "src/**/*.test-d.{ts,tsx}"],
+      "project": ["src/**/*.{ts,tsx}"],
+      "ignoreDependencies": ["neverthrow", "zod"]
+    }
+  }
 }

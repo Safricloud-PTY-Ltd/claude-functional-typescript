@@ -4,13 +4,13 @@
   "plugins": ["@stryker-mutator/vitest-runner"],
   "dryRunTimeoutMinutes": 30,
   "mutate": [
-    "src/**/*.{ts,tsx}",
-    "!src/**/*.test.{ts,tsx}",
-    "!src/**/*.test-d.{ts,tsx}",
-    "!src/**/index.ts",
-    "!src/**/types.ts",
-    "!src/app/**",
-    "!src/shared/stub.ts"
+    "packages/*/src/**/*.{ts,tsx}",
+    "!packages/*/src/**/*.test.{ts,tsx}",
+    "!packages/*/src/**/*.test-d.{ts,tsx}",
+    "!packages/*/src/**/index.ts",
+    "!packages/*/src/**/types.ts",
+    "!packages/*/src/app/**",
+    "!packages/shared/src/stub.ts"
   ],
   "reporters": ["clear-text", "html"],
   "htmlReporter": {

@@ -1,21 +1,22 @@
 import { defineConfig } from 'vitest/config';
 
+// One root run over every package: each packages/<name>/vitest.config.ts is a project, and
+// coverage is measured here across all of them.
 export default defineConfig({
   test: {
-    // {ts,tsx}: .tsx tests are accepted (issue #12); rendering JSX needs a jsx setting in tsconfig.
-    include: ['src/**/*.test.{ts,tsx}'],
-    typecheck: { enabled: true, include: ['src/**/*.test-d.{ts,tsx}'] },
+    projects: ['packages/*'],
     coverage: {
       provider: 'v8',
-      include: ['src/**/*.{ts,tsx}'],
+      include: ['packages/*/src/**/*.{ts,tsx}'],
       exclude: [
-        'src/**/*.test.{ts,tsx}',
-        'src/**/*.test-d.{ts,tsx}',
+        'packages/*/src/**/*.test.{ts,tsx}',
+        'packages/*/src/**/*.test-d.{ts,tsx}',
         // A domain's shared test builders are test code, like *.test.ts.
-        'src/**/test-support/**',
-        'src/**/index.ts',
-        'src/app/main.ts',
-        'src/shared/stub.ts',
+        'packages/*/src/**/test-support/**',
+        'packages/*/src/**/index.ts',
+        // Each package's composition root wires and starts; there is nothing to unit-test.
+        'packages/*/src/app/main.ts',
+        'packages/shared/src/stub.ts',
       ],
       thresholds: { lines: 90, functions: 90, branches: 85, statements: 90 },
     },

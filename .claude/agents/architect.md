@@ -207,11 +207,11 @@ Test-writer:
 
 ```
 Brief T-2.3 — contribution 2026-09-05-order-totals
-Contract: src/orders/core/pricing/lineTotal.ts
-Write: src/orders/core/pricing/lineTotal.test.ts (add lineTotal.test-d.ts if the signature is generic)
-Also read: src/orders/types.ts
+Contract: packages/app/src/orders/core/pricing/lineTotal.ts
+Write: packages/app/src/orders/core/pricing/lineTotal.test.ts (add lineTotal.test-d.ts if the signature is generic)
+Also read: packages/app/src/orders/types.ts
 Invariants worth a property: total is 0 for empty items; total is non-increasing in discount
-Validate with: pnpm exec vitest run src/orders/core/pricing/lineTotal.test.ts
+Validate with: pnpm exec vitest run packages/app/src/orders/core/pricing/lineTotal.test.ts
 Report in the standard format.
 ```
 
@@ -219,11 +219,11 @@ Implementor:
 
 ```
 Brief I-2.3 — contribution 2026-09-05-order-totals
-Contract: src/orders/core/pricing/lineTotal.ts
-Tests (red, do not edit): src/orders/core/pricing/lineTotal.test.ts
+Contract: packages/app/src/orders/core/pricing/lineTotal.ts
+Tests (red, do not edit): packages/app/src/orders/core/pricing/lineTotal.test.ts
 Approach: sum price × quantity, apply the discount, round half-up with roundMinor
-Calls you will use: src/shared/math/roundMinor.ts (implemented), src/orders/types.ts
-Validate with: pnpm exec vitest related --run src/orders/core/pricing/lineTotal.ts; pnpm exec eslint src/orders/core/pricing/lineTotal.ts
+Calls you will use: packages/shared/src/math/roundMinor.ts (implemented), packages/app/src/orders/types.ts
+Validate with: pnpm exec vitest related --run packages/app/src/orders/core/pricing/lineTotal.ts; pnpm exec eslint packages/app/src/orders/core/pricing/lineTotal.ts
 Report in the standard format.
 ```
 
@@ -336,9 +336,10 @@ one.
 territories too. When the guard denies a write, its message names the fix, so don't work
 around it.
 - **The reserve belongs to the orchestrator.** That's every shared file: `package.json`,
-  the lockfile, the configs, `src/shared/`, `src/app/`, docs, `.claude/`, and your memory.
-  A change you need in one is a NEEDS report. A new function in `src/shared/` comes as a
-  loan of the files, so ask with the exact paths (the file, its test, `src/shared/index.ts`)
+  the lockfile, the configs, each package's `package.json` and `vitest.config.ts`,
+  `packages/shared/`, each package's `src/app/`, docs, `.claude/`, and your memory. A change
+  you need in one is a NEEDS report. A new function in `packages/shared/` comes as a loan of
+  the files, so ask with the exact paths (the file, its test, `packages/shared/src/index.ts`)
   after a full duplicate scan, all in one NEEDS.
 - **Another workstream's file belongs to that workstream's architect.** A change you need in
   one is a CROSS report. The orchestrator decides whether it's allowed and passes it on to
@@ -361,18 +362,20 @@ you need is a NEEDS report, and the orchestrator decides whether the git manager
 Undo a deliberate-break check with Edit, not `git checkout`.
 
 **Locks.** Before each phase, release only your own territory's locks. A lock file is
-named after its path with `/` written as `__`, so for `src/billing/*` run
-`rm -f .claude/locks/src__billing__*`. Never `rm -rf .claude/locks`: that frees files that
-other architects' sub-agents hold in the middle of a phase.
+named after its path with `/` written as `__`, so for `packages/app/src/billing/*` run
+`rm -f .claude/locks/packages__app__src__billing__*`. Never `rm -rf .claude/locks`: that
+frees files that other architects' sub-agents hold in the middle of a phase.
 
 **Scoped checks.** Other workstreams have stubs and half-written files, so your full check
 covers only your territory:
-- `pnpm exec vitest run src/<domain>` for each of your domains;
-- `pnpm exec eslint --max-warnings 0 src/<domain>`;
+- `pnpm exec vitest run packages/<pkg>/src/<domain>` for each of your domains;
+- `pnpm exec eslint --max-warnings 0 packages/<pkg>/src/<domain>`;
 - the typecheck (`pnpm exec tsgo --noEmit`, or `tsc`), with its output filtered to your
-  paths (`| grep -F src/<domain>/`). An error in a sibling's file is a sibling mid-write;
-- `pnpm exec prettier --check src/<domain>`, and `--write` on your own files only;
-- `git grep -n '@stub' -- src/<domain>` finds nothing.
+  paths (`| grep -F packages/<pkg>/src/<domain>/`). An error in a sibling's file is a
+  sibling mid-write;
+- `pnpm exec prettier --check packages/<pkg>/src/<domain>`, and `--write` on your own files
+  only;
+- `git grep -n '@stub' -- packages/<pkg>/src/<domain>` finds nothing.
 
 Never run `pnpm check` or a repo-wide `prettier --write`: the second rewrites other
 architects' files. dependency-cruiser and knip see the whole repo, so they're the

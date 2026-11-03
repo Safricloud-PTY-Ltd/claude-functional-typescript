@@ -14,7 +14,7 @@ package versions (see "Versions" below); copy them as they are, then adjust with
 | Standard                                                                                                                                                                                                                                                                                                                                               | Enforced by                                                                                |
 | :----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :----------------------------------------------------------------------------------------- |
 | Explicit types on every export                                                                                                                                                                                                                                                                                                                         | `tsconfig` `isolatedDeclarations`                                                          |
-| No `enum`, `namespace`, parameter properties                                                                                                                                                                                                                                                                                                           | `tsconfig` `erasableSyntaxOnly` (Node runs `src/` directly)                                |
+| No `enum`, `namespace`, parameter properties                                                                                                                                                                                                                                                                                                           | `tsconfig` `erasableSyntaxOnly` (Node runs each package's `src/` directly)                  |
 | No `let`, no classes, no `this`, no loops, no mutation                                                                                                                                                                                                                                                                                                 | `eslint-plugin-functional`                                                                 |
 | No `throw`/`try` outside `shell/`, `app/`, `stub.ts`                                                                                                                                                                                                                                                                                                   | `functional/no-throw-statements`, `no-try-statements`, per-path                            |
 | Results must be handled                                                                                                                                                                                                                                                                                                                                | `@ninoseki/eslint-plugin-neverthrow` `must-use-result`                                     |
@@ -24,7 +24,7 @@ package versions (see "Versions" below); copy them as they are, then adjust with
 | `type` over `interface`; `ReadonlyArray<T>`; `readonly` keyword                                                                                                                                                                                                                                                                                        | `@typescript-eslint/consistent-type-definitions`, `array-type`; `functional/readonly-type` |
 | JSDoc on every export, `@param`/`@returns` described, no types in JSDoc, `@errors` allowed                                                                                                                                                                                                                                                             | `eslint-plugin-jsdoc`                                                                      |
 | Relative imports carry `.ts`; no cycles; no default exports                                                                                                                                                                                                                                                                                            | `eslint-plugin-import-x`                                                                   |
-| Every directory is a module entered only through its `index.ts`, at every depth ≤5; no own-barrel imports; barrels only re-export; `core/` never imports `shell/`/`app/`; `core/` imports nothing from node_modules but neverthrow; `shared/` is a leaf; nothing imports `app/`; no cycles, orphans, or unresolvable imports; prod never imports tests | `.dependency-cruiser.cjs`                                                                  |
+| Every directory in a package's `src/` is a module entered only through its `index.ts`, at every depth ≤5; no own-barrel imports; barrels only re-export; `core/` never imports `shell/`/`app/`; `core/` imports nothing from node_modules but neverthrow; `shared` is a leaf; a package imports no other package but `shared`, and that only through its barrel; nothing imports a package's `src/app/`; no cycles, orphans, or unresolvable imports; prod never imports tests | `.dependency-cruiser.cjs`                                                                  |
 | No unused files, exports, or dependencies                                                                                                                                                                                                                                                                                                              | `knip`                                                                                     |
 | Tests red before green, type tests, coverage thresholds                                                                                                                                                                                                                                                                                                | `vitest` (`typecheck.enabled`, `coverage.thresholds`)                                      |
 | Tests that assert something                                                                                                                                                                                                                                                                                                                            | Stryker mutation score, by hand                                                            |
@@ -33,40 +33,47 @@ package versions (see "Versions" below); copy them as they are, then adjust with
 
 ## Procedure for a new repository
 
-1. Copy everything in `assets/` to the repo root, preserving paths (the `.github/`, `src/shared/`,
-   and `src/app/` directories included). Rename `gitignore` to `.gitignore` and `gitattributes` to
+1. Copy everything in `assets/` to the repo root, preserving paths (the `.github/` and
+   `packages/` directories included). Rename `gitignore` to `.gitignore` and `gitattributes` to
    `.gitattributes` on the way; `gitignore` ships undotted because npm strips a dotted
    `.gitignore` out of every tarball it builds, so the dotted name would never survive
-   delivery, and `gitattributes` follows suit. Edit `package.json` `name`, and set
+   delivery, and `gitattributes` follows suit. Replace `<project-name>` with the project's
+   name in the three manifests, the root's `name` and the packages' `@<project-name>/…` scope
+   (`sed -i 's/<project-name>/myproj/g' package.json packages/*/package.json`), and set
    `packageManager` to the pnpm you use (`pnpm pkg set packageManager=pnpm@$(pnpm --version)`);
    CI's `pnpm/action-setup` reads it.
 2. Install the toolchain. TypeScript is pinned to 6 because typescript-eslint's peer range excludes 7;
-   `@typescript/native-preview` supplies `tsgo` for fast typechecks.
+   `@typescript/native-preview` supplies `tsgo` for fast typechecks. The repo is a pnpm
+   workspace, so the toolchain goes to the root with `-w` (pnpm refuses a root `add` without
+   it) and runtime dependencies go to the package that imports them, with `--filter`.
 
    ```bash
-   pnpm add -D typescript@6 @typescript/native-preview @types/node \
+   pnpm add -Dw typescript@6 @typescript/native-preview @types/node \
      eslint @eslint/js typescript-eslint eslint-config-prettier prettier \
      eslint-plugin-functional eslint-plugin-jsdoc eslint-plugin-import-x \
      eslint-import-resolver-typescript @ninoseki/eslint-plugin-neverthrow \
      vitest @vitest/coverage-v8 fast-check \
      dependency-cruiser knip lefthook \
      @stryker-mutator/core @stryker-mutator/vitest-runner
-   pnpm add neverthrow zod
+   pnpm --filter @myproj/shared add neverthrow
+   pnpm --filter @myproj/app add neverthrow zod
    pnpm approve-builds --all        # lefthook and unrs-resolver need their install scripts
    pnpm exec lefthook install
    ```
 
-   Add `drizzle-orm drizzle-zod` and `-D drizzle-kit` when the project has a database, and
-   add all three to `knip.json` `ignoreDependencies` until knip finds them on its own (an
-   import for the first two, a drizzle config for the CLI), for the reason `zod` is there
-   (installed before any code imports it). `esbuild`, which drizzle-kit pulls in, is already in
+   Add `drizzle-orm drizzle-zod` (and `-D drizzle-kit`) to the package that has a database,
+   and add all three to that workspace's `ignoreDependencies` in `knip.json` until knip finds
+   them on its own (an import for the first two, a drizzle config for the CLI), for the
+   reason `neverthrow` and `zod` are there for `packages/app` (installed before any code
+   imports them). `esbuild`, which drizzle-kit pulls in, is already in
    `allowBuilds` as `false` (its binary is an optional dependency; the script only validates),
    and drizzle-kit's old `@esbuild-kit/core-utils` esbuild is already overridden.
 
 3. Run `pnpm check` and `pnpm coverage`. On the starter tree both pass, with four test files
-   (`src/shared/errors.test.ts`; `src/shared/index.test.ts`, the barrel's acceptance test
-   that every module has; and the type tests `src/shared/brand.test-d.ts` and
-   `src/shared/index.test-d.ts`) and an empty domain list.
+   in `packages/shared/src/` (`errors.test.ts`; `index.test.ts`, the barrel's acceptance test
+   that every module has; and the type tests `brand.test-d.ts` and `index.test-d.ts`) and an
+   empty domain list. Knip prints two configuration hints and exits 0: `lefthook` (see
+   Versions) and `packages/app`'s entry patterns, which match nothing until its first domain.
    If a step fails here, the environment differs from the validated one; fix the environment
    before touching the configs.
 4. Fill in `CLAUDE.md`'s project paragraph and the `build`, `e2e`, and deploy commands.
@@ -82,16 +89,32 @@ comment saying which contribution turns it back to `error`.
 
 ## Decisions baked into the configs
 
+- **A pnpm workspace under `packages/`.** Each package is `packages/<name>/` with its own
+  `package.json`, `vitest.config.ts` and `src/`. `packages/shared` holds what every package
+  uses, and `packages/app` is the application, with its composition root at `src/app/` and
+  its domains beside it. A second deployable (a web front end, an MCP server) is another
+  package beside `app`, with its own `src/app/`. The root run covers them all: vitest
+  `projects`, one tsconfig over `packages/*/src`, knip `workspaces`, and dependency-cruiser
+  over `packages`. Packages talk only through `shared`: the cross-package rules refuse an
+  import of any other package, and an import of `shared` past its barrel.
 - **`#<domain>` subpath imports, not `@/` paths.** Node 24 runs `.ts` source directly and does not
-  read `tsconfig` `paths`, but it does resolve `package.json` `imports`. `"#*": "./src/*/index.ts"`
-  maps `#orders` to the domain barrel and nothing else, which is exactly the cross-domain rule.
-  TypeScript (`nodenext`), Vitest, ESLint's resolver, and dependency-cruiser all follow it.
+  read `tsconfig` `paths`, but it does resolve `package.json` `imports`. In each package,
+  `"#*": "./src/*/index.ts"` maps `#orders` to the domain barrel and nothing else, which is
+  exactly the cross-domain rule. `"#shared": "@<project-name>/shared"` comes first and maps to
+  the shared package, whose `exports` is its barrel. TypeScript (`nodenext`), Vitest, ESLint's
+  resolver, and dependency-cruiser all follow both.
+- **`#shared` is aliased in each package's vitest config.** Under Stryker the sandbox's
+  `node_modules` is a junction back to the original tree, so the workspace link would load
+  the unmutated shared source. The alias resolves it from the config file instead.
 - **Relative imports carry `.ts`.** Same reason: Node needs the extension. `allowImportingTsExtensions`
   and `rewriteRelativeImportExtensions` keep tsc happy now and if the project ever emits JS.
 - **`noEmit` in the main tsconfig.** There is no build step; `declaration: true` exists only so
   `isolatedDeclarations` can run.
-- **Config files are outside the project.** `tsconfig` includes `src` only; ESLint lints
-  `*.config.{js,ts}` through `allowDefaultProject`; `.dependency-cruiser.cjs` is ignored by ESLint.
+- **Config files are outside the project.** `tsconfig` includes `packages/*/src` only; ESLint
+  lints `*.config.{js,ts}` and `packages/*/*.config.ts` through `allowDefaultProject`;
+  `.dependency-cruiser.cjs` is ignored by ESLint. Knip ignores `.claude/**`, because its
+  vitest plugin would otherwise take the vendored scaffold's own test files as the root
+  workspace's.
 - **Tests are exempt from size and immutability rules and from `must-use-result`**, since a test
   asserts on `isOk()`/`isErr()` rather than consuming the Result.
 - **`stub()` takes the contract's parameters.** `return stub('name', a, b)` keeps
@@ -161,21 +184,38 @@ these assets bootstrapped again in a scratch project) with knip 6.44.0, eslint 1
   passed with all four, the artifact upload included. `pnpm/action-setup@v6` also ends the
   Node 20 deprecation warning that v4 printed.
 
+Moved to a pnpm workspace on 2026-11-03 (genesys-action-editor, at the owner's request). The
+starter tree's `src/shared` and `src/app` became `packages/shared/src` and
+`packages/app/src/app`, after genesys-auth-provider's workspace, which had run under these
+tools since 2026-10-16. Measured twice: in genesys-action-editor, and by bootstrapping
+these assets in a fresh scratch project with this procedure (pnpm 11.25.0, eslint 10.14,
+typescript-eslint 8.72.1, vitest 5.0.5, knip 6.44.1, dependency-cruiser 18.7.1, Stryker
+10.1.1). In both:
+- Every script exits 0: 4 test files, 9 tests, depcruise over 16 modules, 100% coverage,
+  and a mutation score of 100.
+- In the scratch project, `lefthook install` failed (`lefthook.exe` was missing from a store
+  under the temp dir, as on 2026-10-31). Knip still reported nothing for `lefthook` there.
+- Downstream, each new rule refused a deliberate violation: another package's domain,
+  `shared` past its barrel, `shared` importing `app`, and a domain importing `src/app/`.
+- A sample domain whose `core/` imports `#shared` passed lint, depcruise, vitest and a run
+  under Node (`#orders` → `#shared`).
+
 When a tool's major version changes, re-run every script, re-check the negative cases (a
 `let`, a nested named function, a `throw` in core, a `core/` → `shell/` import, a cross-domain
-internal import), and update this section.
+internal import, an import of another package, an import of `shared` past its barrel), and
+update this section.
 
 ## Files
 
 ```
 assets/
-  package.json               scripts, engines, #* imports map
-  pnpm-workspace.yaml        allowBuilds, minimumReleaseAge, audit overrides for dev tooling
-  tsconfig.json
+  package.json               the workspace root: scripts, engines; no dependencies of its own
+  pnpm-workspace.yaml        packages/*, allowBuilds, minimumReleaseAge, audit overrides for dev tooling
+  tsconfig.json              one program over packages/*/src
   eslint.config.js
   .prettierrc.json  .prettierignore
-  vitest.config.ts           typecheck on, v8 coverage with thresholds
-  knip.json
+  vitest.config.ts           projects: packages/*; v8 coverage with thresholds across them
+  knip.json                  one workspace per package
   .dependency-cruiser.cjs    architecture rules
   lefthook.yml               pre-commit: prettier, eslint, typecheck (skipped while territories are live); pre-push: pnpm check
   stryker.config.json
@@ -184,11 +224,15 @@ assets/
   .github/dependabot.yml     weekly, grouped
   .github/workflows/ci.yml   pnpm check + coverage on PR and main
   .github/workflows/nightly.yml  mutation testing
-  src/shared/{index,stub,brand,errors}.ts   the primitives the standards refer to
-  src/shared/errors.test.ts  keeps coverage green on the starter tree
-  src/shared/index.test.ts   the barrel's acceptance test; also pins that a module's own
-                             index.test.ts may import its barrel (no-own-barrel exempts it)
-  src/shared/brand.test-d.ts  type tests for Brand's nominal separation (2026-10-31)
-  src/shared/index.test-d.ts  the barrel's type-level acceptance test (Brand re-export)
-  src/app/main.ts            composition-root placeholder
+  packages/shared/package.json      @<project-name>/shared; exports its barrel
+  packages/shared/vitest.config.ts  the shared project; type tests off under Stryker
+  packages/shared/src/{index,stub,brand,errors}.ts   the primitives the standards refer to
+  packages/shared/src/errors.test.ts  keeps coverage green on the starter tree
+  packages/shared/src/index.test.ts   the barrel's acceptance test; also pins that a module's
+                                      own index.test.ts may import its barrel (no-own-barrel exempts it)
+  packages/shared/src/brand.test-d.ts  type tests for Brand's nominal separation (2026-10-31)
+  packages/shared/src/index.test-d.ts  the barrel's type-level acceptance test (Brand re-export)
+  packages/app/package.json         @<project-name>/app; #shared and #* imports, start script
+  packages/app/vitest.config.ts     the app project; aliases #shared for Stryker
+  packages/app/src/app/main.ts      composition-root placeholder
 ```
