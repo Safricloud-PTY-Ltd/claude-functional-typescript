@@ -1,7 +1,7 @@
 name: nightly
+# Mutation testing (Stryker) runs only when dispatched by hand: it is too slow for the loop and
+# too slow for a schedule nobody reads. Run it from the Actions tab or `gh workflow run nightly.yml`.
 on:
-  schedule:
-    - cron: '0 3 * * *'
   workflow_dispatch:
 
 jobs:
