@@ -185,7 +185,7 @@ export default defineConfig(
   },
 
   // Config files are not domain code. The size rules are off too: this file itself is past
-  // max-lines (161 counted lines against 150, issue #14).
+  // max-lines (issue #14).
   {
     files: ['*.config.js', '*.config.ts', 'packages/*/*.config.ts'],
     rules: {

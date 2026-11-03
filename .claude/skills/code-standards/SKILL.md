@@ -305,7 +305,7 @@ Before reporting a file done, check it against this list; the architect will.
 - [ ] No `let`, `class`, `enum`, `any`, `null`, `throw`, `try`, mutation, or default export.
 - [ ] No function declared by an implementor; every named function has a contract.
 - [ ] Failure paths return `Result`/`ResultAsync` with a narrow, named error type.
-- [ ] Core imports nothing from shell, app, or node_modules (neverthrow aside); other modules are
-      reached only through their `index.ts`; module-owned data is opaque.
+- [ ] Core imports nothing from shell, app, or node_modules (neverthrow and `#shared` aside);
+      other modules are reached only through their `index.ts`; module-owned data is opaque.
 - [ ] Tests cover every `@param` edge case and every `@errors` kind; no mocks in core.
 - [ ] `tsc --noEmit`, `eslint`, and the file's tests pass; nothing outside the brief was touched.
