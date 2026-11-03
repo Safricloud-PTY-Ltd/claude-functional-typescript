@@ -1,6 +1,6 @@
 ---
 name: project-scaffold
-description: Sets up or repairs the toolchain that enforces this repo's code standards — TypeScript 6 config, ESLint with the functional/jsdoc/import/neverthrow rules, Prettier, Vitest with type tests and coverage, dependency-cruiser architecture rules, knip dead-code detection, lefthook git hooks, pnpm supply-chain settings, Dependabot, and GitHub Actions CI plus nightly mutation testing. Use this when creating a new repository, when `pnpm check` is missing or broken, when adding or changing any lint, typecheck, test, or CI configuration, when a tool in the chain is upgraded, or when someone asks which tool enforces a given rule.
+description: Sets up or repairs the toolchain that enforces this repo's code standards — TypeScript 6 config, ESLint with the functional/jsdoc/import/neverthrow rules, Prettier, Vitest with type tests and coverage, dependency-cruiser architecture rules, knip dead-code detection, lefthook git hooks, pnpm supply-chain settings, Dependabot, and GitHub Actions CI plus mutation testing run by hand. Use this when creating a new repository, when `pnpm check` is missing or broken, when adding or changing any lint, typecheck, test, or CI configuration, when a tool in the chain is upgraded, or when someone asks which tool enforces a given rule.
 ---
 
 # Project scaffold
@@ -27,7 +27,7 @@ package versions (see "Versions" below); copy them as they are, then adjust with
 | Every directory is a module entered only through its `index.ts`, at every depth ≤5; no own-barrel imports; barrels only re-export; `core/` never imports `shell/`/`app/`; `core/` imports nothing from node_modules but neverthrow; `shared/` is a leaf; nothing imports `app/`; no cycles, orphans, or unresolvable imports; prod never imports tests | `.dependency-cruiser.cjs`                                                                  |
 | No unused files, exports, or dependencies                                                                                                                                                                                                                                                                                                              | `knip`                                                                                     |
 | Tests red before green, type tests, coverage thresholds                                                                                                                                                                                                                                                                                                | `vitest` (`typecheck.enabled`, `coverage.thresholds`)                                      |
-| Tests that assert something                                                                                                                                                                                                                                                                                                                            | Stryker mutation score, nightly                                                            |
+| Tests that assert something                                                                                                                                                                                                                                                                                                                            | Stryker mutation score, by hand                                                            |
 | Nothing lands unformatted/unlinted/untyped                                                                                                                                                                                                                                                                                                             | `lefthook` pre-commit and pre-push, CI `pnpm check`                                        |
 | Fresh/malicious package versions, install scripts                                                                                                                                                                                                                                                                                                      | `pnpm-workspace.yaml` `minimumReleaseAge`, `allowBuilds`                                   |
 
@@ -102,8 +102,9 @@ comment saying which contribution turns it back to `error`.
   can't ask the filesystem "is there an index.ts above this file", so `.dependency-cruiser.cjs`
   generates the boundary, own-barrel, and barrel-only rules for depths 1–5. Raise `MAX_DEPTH`
   there if the standards ever allow deeper trees.
-- **Mutation testing is nightly only.** It is too slow for the loop; its job is to catch tests
-  that pass without asserting, which shows up in the report the next morning.
+- **Mutation testing runs by hand.** It is too slow for the loop and too slow for a schedule
+  nobody reads, so `nightly.yml` has no schedule: dispatch it when you want the score. Its job
+  is to catch tests that pass without asserting.
 
 ## Versions
 
