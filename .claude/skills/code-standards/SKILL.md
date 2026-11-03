@@ -95,6 +95,8 @@ draw.
 - Into another module: its `index.ts` and nothing deeper (enforced at every depth). For a
   top-level module use the subpath alias — `import { lineTotal } from '#orders'`;
   `#<name>` resolves to the package's own `src/<name>/index.ts` and to nothing else.
+  `packages/shared` maps no `#*`, so its top-level modules reach each other relatively,
+  through the barrel (`../math/index.ts`).
 - `packages/shared` is imported as `#shared` from any package, and resolves to its barrel.
   It imports nothing from the workspace. No package imports another package except
   `shared` (enforced).

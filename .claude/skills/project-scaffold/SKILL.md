@@ -132,7 +132,8 @@ comment saying which contribution turns it back to `error`.
 - **`pnpm-workspace.yaml` uses `allowBuilds`** (pnpm 11), not the older `onlyBuiltDependencies`.
 - **Module boundaries are generated per depth.** dependency-cruiser matches paths by regex and
   can't ask the filesystem "is there an index.ts above this file", so `.dependency-cruiser.cjs`
-  generates the boundary, own-barrel, and barrel-only rules for depths 1–5. Raise `MAX_DEPTH`
+  generates the boundary, own-barrel, and barrel-only rules for depths 0–5 (0 is a package's
+  `src/` itself). Raise `MAX_DEPTH`
   there if the standards ever allow deeper trees.
 - **Mutation testing runs by hand.** It is too slow for the loop and too slow for a schedule
   nobody reads, so `nightly.yml` has no schedule: dispatch it when you want the score. Its job
