@@ -111,15 +111,15 @@ Don't guess.
   --list`): run from a clean checkout of the branch, `gh pr merge --delete-branch` switches to
   `main`, fast-forwards it and deletes the local branch itself. Report the merge SHA from
   `main`'s head. With Project `yes`, confirm the effort issue closed and its board item
-  shows Done (`gh project item-list <number> --owner <o> --format json`), setting Done by hand
+  shows Done (read the board as **The board** says, `--limit` included), setting Done by hand
   if it doesn't. Close any sub-issue of it labelled `workstream` that is still open, and list
   the other sub-issues still open (`gh api repos/<o>/<r>/issues/<n>/sub_issues`, then the
   same for each workstream issue, because tasks sit one level down): those are deferred
   tasks, and they stay open on the board.
 - **ISSUE** `title:`, `body-file:`, and `labels:`. Run `gh issue create`, creating any
   missing label first (`gh label create`). Report the issue number. An issue that waits on
-  a person carries one of two labels, which the job names: `blocked-on-product-owner` for a
-  product decision, `blocked-on-dev-owner` for a code, hosting or architecture decision.
+  a person carries one or both of two labels, which the job names: `blocked-on-product-owner`
+  for a product decision, `blocked-on-dev-owner` for a code, hosting or architecture decision.
   With Project `yes`, the new issue also goes on the board, at `status:` (Todo when the job
   gives none) and under `parent: <n>` when the job names one.
 - **RELABEL** `issue: <n>`, `add:` and `remove:`. Run
@@ -138,12 +138,16 @@ Don't guess.
     issue on the board as a sub-issue of its workstream, or of the effort issue.
 
   Either way, report every issue number, with its URL and its board item id: the main
-  session uses the numbers in `STATUS`, `ISSUE` and the PR body.
-- **STATUS** (Project `yes` only) `issue: <n>` and `to: todo|in-progress|done`. For `todo`
-  and `in-progress`, set the item's Status. For `done`, run `gh issue close <n>`: the board
-  moves a closed item to Done itself. Confirm it did
-  (`gh project item-list <number> --owner <o> --format json`), and set Done by hand if the
-  board's workflow has been turned off.
+  session uses the numbers in `STATUS`, `ISSUE` and the PR body. The first form also
+  reports the project's number, owner and URL, which the main session needs to read the
+  board itself.
+- **STATUS** (Project `yes` only) `issues: <n>` (one or several) and
+  `to: todo|in-progress|done`. For `todo` and `in-progress`, set each item's Status. For
+  `done`, run `gh issue close <n>` for each: the board moves a closed item to Done itself.
+  Confirm it did (read the board as **The board** says, `--limit` included), and set Done by
+  hand if the board's workflow has been turned off. With `detach: yes` beside `to: todo`,
+  also take the issue out from under its parent, so it is future work again; the job says
+  the owner said yes.
 - **HALT** (the main session is stopping mid-effort, every agent quiet). Run
   `git stash push -u -m "halt <id> <date>"`, then `git branch wip/<id>-<date> stash@{0}`
   so the stash survives a `stash drop`, then `git stash apply` so the working tree is left
@@ -194,8 +198,13 @@ guard refuses `$(...)`, so a lookup and its use are two calls.
   of the effort.
 - **Put an issue or a PR on it.**
   `gh project item-add <number> --owner <o> --url <its URL> --format json` prints the item,
-  whose id is its `.id`. `gh project item-list <number> --owner <o> --format json` shows
-  each item's `.status`.
+  whose id is its `.id`.
+- **Read the board.**
+  `gh project item-list <number> --owner <o> --limit 1000 --format json` shows each item's
+  `.status`. Never leave `--limit` off: the default prints the first 30 items only, and the
+  item you are checking may not be among them (a 75-item board printed 30, measured
+  2026-11-10). If `.totalCount` is above the number of items printed, raise the limit.
+  STATUS, MERGE and every other read of the board use this command.
 - **Set its status.**
   `gh project item-edit --id <item id> --project-id <project id> --field-id <Status field id> --single-select-option-id <option id>`.
 - **Make #c a sub-issue of #p.** `gh api repos/<o>/<r>/issues/<c> -q .id`, then
@@ -206,6 +215,9 @@ guard refuses `$(...)`, so a lookup and its use are two calls.
   422, "Sub issue may only have one parent"). Leave it where it is and report it: moving it
   (`-F replace_parent=true`) rearranges something the owner arranged, so it needs a job that
   says the owner said yes.
+- **Take #c out from under #p.**
+  `gh api -X DELETE repos/<o>/<r>/issues/<p>/sub_issue -F sub_issue_id=<the id of #c>`: the
+  path ends `sub_issue`, singular.
 - **A label that doesn't exist yet.** `gh label create <name>` first: `effort`,
   `workstream`, and the two `blocked-on-` labels.
 
@@ -214,7 +226,7 @@ A token without the `project` scope fails the first of these. That is BLOCKED, w
 draft can't carry a label, a parent or a `Fixes`, and `gh issue list` doesn't show it.
 
 These commands were run once, in order, against a throwaway project in an organisation with
-gh 2.89 (2026-11-10), and the guard accepted each as written. Not run then: a pull request
+gh 2.89 (2026-11-10), and the guard accepted each as written. Not run then: taking an issue out from under its parent, a pull request
 as an item, a repository owned by a user rather than an organisation, an organisation that
 forbids its members to create projects, and a `Fixes` closing the effort issue at a merge.
 The first time one of those happens, report what GitHub printed.

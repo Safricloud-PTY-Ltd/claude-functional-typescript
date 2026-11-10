@@ -326,9 +326,13 @@ operation for the contribution except your own commits. Its jobs and report are 
 - **Its reports print what git printed.** Check a SHA with `git log` before you relay it.
 - **With the Project setting at `yes`, it keeps the board.** Send `TRACK` after `START`
   with the contribution's title and a body file (the ask and its source), or `issue: <n>`
-  when the ask is one existing issue; that is the effort issue. Name in the review any Todo
-  item on the board the contribution should adopt, and send those in a second `TRACK`,
-  under `effort`: a solo contribution has no workstream issues. End the PR body with
+  when the ask is one existing issue; that is the effort issue. Its report gives the
+  project's number. Name in the review any Todo item on the board the contribution should
+  adopt (read it with `gh project item-list <number> --owner <o> --limit 1000 --format json`;
+  without `--limit` it prints 30 items and no more), and send those in a second `TRACK`,
+  under `effort`: a solo contribution has no workstream issues. Send `STATUS` in-progress
+  for them when the loop starts. Every adopted task is finished; one the loop shows is out
+  of scope goes back only with the owner's yes (`STATUS` todo, `detach: yes`). End the PR body with
   `Fixes #<n>` for the effort issue and each adopted task you completed. A deferred item's
   `ISSUE` job names the effort issue as its `parent:`.
 

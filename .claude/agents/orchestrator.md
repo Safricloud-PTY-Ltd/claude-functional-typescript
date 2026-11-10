@@ -184,8 +184,7 @@ built beside the chosen design.
 
 - **Three options, always.** A report with fewer goes back to the designer. If the owner
   refuses all three, the designer asks what was wrong and returns three more.
-- **No designer** for a change with no UI, or for one the owner asked to be built to a
-  design that already exists.
+- **No designer** for a change with no UI.
 - **The designer writes only in its folder**, and the write guard holds it there. That
   folder is in the reserve, so no territory includes it.
 
@@ -197,15 +196,23 @@ the repo. Its file's **The board** has the objects and the commands. You tell it
 - **After `START`**: `TRACK` with the effort's title and a body file (the ask in a sentence
   and its source), or `issue: <n>` when the ask is one existing issue. Keep the effort
   issue's number.
-- **While you orient**: read the board's Todo items along with the open issues, and name in
-  the review the ones this effort should adopt.
+- **While you orient**: read the board's Todo items along with the open issues
+  (`gh project item-list <number> --owner <o> --limit 1000 --format json`; without `--limit`
+  it prints 30 items and no more), and name in the review the ones this effort should
+  adopt.
 - **After the plan**: `TRACK` with `under:` the effort issue, one entry per workstream (a
   title, and a body file with its territory, wave and plan path) and the issues to adopt,
   each under its workstream. An effort with one workstream sends only the adoptions, under
   `effort`.
-- **When a workstream's architect is spawned**: `STATUS` in-progress for its issue.
-- **When it reports DONE and you've verified it**: `STATUS` done, which closes the issue.
-  Don't leave it for the merge, which the owner may do by hand.
+- **When a workstream's architect is spawned**: `STATUS` in-progress for its issue and for
+  the tasks adopted under it. With one workstream, send it for the adopted tasks when that
+  architect is spawned.
+- **When it reports DONE and you've verified it**: `STATUS` done for the workstream issue,
+  which closes it. Don't leave it for the merge, which the owner may do by hand. Its
+  adopted tasks stay In Progress until the PR's `Fixes` closes them. Every adopted task is
+  finished: adopting one is taking it on. One the loop shows is out of scope goes back only
+  with the owner's yes: `STATUS` todo, with `detach: yes` so the git manager takes it out
+  from under the workstream and it is future work again. The PR body says so.
 - **A deferred item**: `ISSUE` with its `blocked-on-` label, and `parent:` the workstream
   (or the effort) it came from.
 - **The PR body** ends with `Fixes #<n>` for the effort issue and for each adopted task the

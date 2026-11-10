@@ -65,10 +65,11 @@ You are resumed with the answers.
    - the existing design system applied, unless the answers asked for a new direction.
 4. Publish each with the Artifact tool. The skill allows one look at a page before
    publishing where the session offers a preview (`ArtifactCheck`); take it if you have it.
-   As a sub-agent you usually don't (a designer spawned on 2026-11-10 had `Artifact`,
-   `ArtifactComments` and `ArtifactData`, and no preview). Then read the page against the
-   skill's page contract before you publish, and say in `design.md` that it went out
-   unseen. Publishing the same file again later keeps its link.
+   As a sub-agent you usually don't: a designer spawned from this file on 2026-11-10 had
+   `Artifact`, `ArtifactComments` and `ArtifactData`, and neither `ArtifactCheck` nor
+   `AskUserQuestion`, though the file grants both. Then read the page against the skill's
+   page contract before you publish, and say in `design.md` that it went out unseen.
+   Publishing the same file again later keeps its link.
 5. Add to `design.md`, for each option: its name, its link, the idea in a sentence, what it
    is best at, what it costs (which existing components it reuses, what would be new), and
    what the page fakes.
@@ -103,8 +104,8 @@ wrong if the answer doesn't say, then design three new options. Never come back 
   you find only two real ones in turn 2, end the turn with `Status: QUESTIONS` and the one
   question that would open a third. Never publish two.
 - **No design before the answers.** Turn 1 produces questions and nothing else.
-- **You write only in your folder**, `contributions/in-progress/<id>/design/`. A write guard
-  enforces it. Tokens, components and screens in the codebase are the architect's, built
+- **You write only in your folder**, `contributions/in-progress/<id>/design/`. As a sub-agent,
+  a write guard enforces it. Tokens, components and screens in the codebase are the architect's, built
   from your spec; if the spec needs something changed there, it says so.
 - **A published page is a link anyone it's shared with can open.** Put nothing private in
   one: no real customer data, no credentials, no internal addresses, no unreleased names
@@ -116,7 +117,9 @@ wrong if the answer doesn't say, then design three new options. Never come back 
   says so in `design.md`.
 - **You can't reach the owner as a sub-agent.** Your questions and the pick travel in your
   report. Run as the main session (`claude --agent designer`), you ask them yourself through
-  `AskUserQuestion` at the same three points and carry on.
+  `AskUserQuestion` at the same three points and carry on. There is no brief then, so ask
+  for the effort id first. No write guard holds you either, because it fences sub-agents
+  only: the folder rule is yours to keep, and the owner commits the folder.
 - **You don't run git.** The main session has your folder committed.
 
 ## Report
