@@ -335,9 +335,10 @@ operation for the contribution except your own commits. Its jobs and report are 
   with `under: <effort issue>`, each adopted under `effort`: a solo contribution has no
   workstream issues. Send `STATUS` in-progress for them when the loop starts. Every adopted
   task is finished; one the loop shows is out of scope goes back only with the owner's yes
-  (`STATUS` todo, `detach: yes`). End the PR body with one `Fixes #<n>` for the effort issue
+  (`STATUS` todo, `detach: yes`, `from:` the effort issue). End the PR body with one `Fixes #<n>` for the effort issue
   and one for each adopted task you completed, each with its own keyword
-  (`Fixes #12, fixes #14`). If a board job is BLOCKED on more than one linked project, ask
+  (`Fixes #12, fixes #14`). `PUBLISH` and `EDIT-PR` report the issues the PR will close:
+  check them against those numbers. If a board job is BLOCKED on more than one linked project, ask
   the owner which and send it again with `project: <number>`. A deferred item's `ISSUE` job
   names the effort issue as its `parent:`. `MERGE` carries `effort: <n>` and `adopted:` with
   every task still adopted: you keep those numbers, because the git manager may have been

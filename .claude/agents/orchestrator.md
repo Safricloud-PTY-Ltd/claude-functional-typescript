@@ -221,13 +221,15 @@ the repo. Its file's **The board** has the objects and the commands. You tell it
   which closes it. Don't leave it for the merge, which the owner may do by hand. Its
   adopted tasks stay In Progress until the PR's `Fixes` closes them. Every adopted task is
   finished: adopting one is taking it on. One the loop shows is out of scope goes back only
-  with the owner's yes: `STATUS` todo, with `detach: yes` so the git manager takes it out
-  from under the workstream and it is future work again. The PR body says so.
+  with the owner's yes: `STATUS` todo, with `detach: yes` and `from:` the issue `TRACK` put
+  it under, so the git manager takes it out and it is future work again. The PR body says so.
 - **A deferred item**: `ISSUE` with its `blocked-on-` label, and `parent:` the workstream
   (or the effort) it came from.
 - **The PR body** ends with one `Fixes #<n>` for the effort issue and one for each adopted
   task the effort completed, each with its own keyword: `Fixes #12, fixes #14`. GitHub wants
-  the full syntax per issue, so `Fixes #12, #14` is not relied on to close #14.
+  the full syntax per issue, so `Fixes #12, #14` is not relied on to close #14. `PUBLISH`
+  and `EDIT-PR` report the issues the PR will close: check them against the effort issue
+  and the adopted tasks each time, since you may not be the one who merges.
 - **When a board job is BLOCKED on more than one linked project**: ask the owner which, and
   send it again with `project: <number>`. Repeat that field on every board job if the git
   manager is respawned.
@@ -236,8 +238,8 @@ the repo. Its file's **The board** has the objects and the commands. You tell it
   manager may have been respawned since `TRACK`. It checks before merging that the PR will
   close each one, and reports BLOCKED if the body misses one: fix the body with `EDIT-PR`
   and send `MERGE` again.
-- **An abandoned effort**: with the owner's yes, `STATUS` todo with `detach: yes` for its
-  adopted tasks, and `STATUS` not-planned for the effort issue and any workstream issue
+- **An abandoned effort**: with the owner's yes, `STATUS` todo with `detach: yes` (and each
+  task's `from:`) for its adopted tasks, and `STATUS` not-planned for the effort issue and any workstream issue
   still open.
 - **An issue still labelled `blocked-on-owner`**, from before the two labels: `RELABEL` it to
   the one that fits when you meet it. This one works with the setting at `no` too.

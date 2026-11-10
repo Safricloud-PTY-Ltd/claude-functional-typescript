@@ -73,11 +73,14 @@ Don't guess.
   output. With Project `yes`, put the PR on the board and set it In Progress: an added item
   lands at Todo, beside future work, and would stay there until the merge moves it to Done.
   The body the main session wrote already carries a `Fixes #<n>` for the effort issue and
-  for each adopted task, which is what closes them at the merge.
+  for each adopted task, which is what closes them at the merge. Whatever the Project setting, report the numbers
+  in `gh pr view <n> --json closingIssuesReferences`, so a missed `Fixes` shows while the PR
+  is open, whoever merges it.
 - **EDIT-PR** `body-file:`, and optionally `title:`. Run `gh pr edit <n> --body-file <file>`
   (and `--title`), then report the body back from `gh pr view <n> --json body` (its first
   lines and its length), so the main session sees what landed. The main session sends this
-  whenever **Decisions to veto** changed, before the next `REVIEW`, which reads it.
+  whenever **Decisions to veto** changed, before the next `REVIEW`, which reads it. Report
+  the numbers in `closingIssuesReferences` again: the body changed.
 - **REVIEW** `reviewers: codex|claude|codex, claude`. This requests one round, per the
   `pr-review` skill, and collects what it found. The review runs in the shared checkout,
   never a worktree: first confirm `git status --porcelain` prints nothing and `HEAD` is the
@@ -112,18 +115,19 @@ Don't guess.
   `git pull --ff-only`, and delete the local branch if it is still there (`git branch
   --list`): run from a clean checkout of the branch, `gh pr merge --delete-branch` switches to
   `main`, fast-forwards it and deletes the local branch itself. Report the merge SHA from
-  `main`'s head. With Project `yes`, the job also names `effort: <n>` and `adopted:` (every
+  `main`'s head. With Project `yes`, the job also names `effort: <e>` and `adopted:` (every
   task still adopted: those `TRACK` reported, attached or not, less any detached since with
-  the owner's yes). Before the merge, check that the PR will close them:
-  `gh pr view <n> --json closingIssuesReferences` must list each of those numbers. One that
-  is missing is BLOCKED, and the main session fixes the body with `EDIT-PR`: a body edited
-  after the merge closes nothing. After the merge, confirm each closed and shows Done (read
-  the board as **The board** says, `--limit` included), setting Done by hand where an issue
-  closed but its item didn't move, and report by number any that is still open. Close any sub-issue of the effort issue labelled
-  `workstream` that is still open. List the other sub-issues still open that aren't adopted
-  tasks (`gh api repos/<o>/<r>/issues/<n>/sub_issues`, then the same for each workstream
-  issue, because tasks sit one level down): those are deferred tasks, and they stay open on
-  the board.
+  the owner's yes), and two steps go around the merge:
+  - **Before `gh pr merge`**: `gh pr view <n> --json closingIssuesReferences` must list `<e>`
+    and each adopted number. One that is missing is BLOCKED, and the main session fixes the
+    body with `EDIT-PR`: a body edited after the merge closes nothing.
+  - **After it**: confirm each closed and shows Done (read the board as **The board** says,
+    `--limit` included), setting Done by hand where an issue closed but its item didn't
+    move, and report by number any that is still open. Close any sub-issue of `<e>`
+    labelled `workstream` that is still open. List the other sub-issues still open that
+    aren't adopted tasks (`gh api repos/<o>/<r>/issues/<e>/sub_issues`, then the same for
+    each workstream issue, because tasks sit one level down): those are deferred tasks, and
+    they stay open on the board.
 - **ISSUE** `title:`, `body-file:`, and `labels:`. Run `gh issue create`, creating any
   missing label first (`gh label create`). Report the issue number. An issue that waits on
   a person carries one or both of two labels, which the job names: `blocked-on-product-owner`
@@ -153,13 +157,15 @@ Don't guess.
 - **STATUS** (Project `yes` only) `issues: <n>` (one or several) and
   `to: todo|in-progress|done|not-planned`. For `todo` and `in-progress`, set each item's
   Status. For `not-planned`, run `gh issue close <n> --reason "not planned"` for each; the
-  job says the owner said yes. The board moves any closed item to Done, this one included. For `done`, run `gh issue close <n>` for each: the board moves a closed item to Done itself.
+  job says the owner said yes. The board is expected to move it to Done, as it does any
+  closed item. For `done`, run `gh issue close <n>` for each: the board moves a closed item to Done itself.
   Confirm it did (read the board as **The board** says, `--limit` included), and set Done by
   hand if the board's workflow has been turned off. With `detach: yes` beside `to: todo`,
-  also take the issue out from under its parent, so it is future work again; the job says
-  the owner said yes. Detach only from a parent this effort gave it, a workstream issue or
-  the effort issue. A task this effort could never attach (it had a parent already) stays
-  where the owner put it, and only its Status changes.
+  the job names a `from:` for each issue, the one `TRACK` put it under (a workstream issue
+  or the effort issue), and says the owner said yes. Take each out from under that issue only
+  if `gh api repos/<o>/<r>/issues/<p>/sub_issues -q '.[].number'` lists it, so it is future
+  work again. A task `TRACK` could never attach (it had a parent already) isn't listed: it
+  stays where the owner put it, and only its Status changes.
 - **HALT** (the main session is stopping mid-effort, every agent quiet). Run
   `git stash push -u -m "halt <id> <date>"`, then `git branch wip/<id>-<date> stash@{0}`
   so the stash survives a `stash drop`, then `git stash apply` so the working tree is left
@@ -253,19 +259,21 @@ draft can't carry a label, a parent or a `Fixes`, and `gh issue list` doesn't sh
 
 These commands were run once, in order, against a throwaway project in an organisation with
 gh 2.89 (2026-11-10), and the guard accepted each as written. Not run then: taking an issue
-out from under its parent, moving one with `replace_parent`, adding an item that is already
-on the board, a pull request as an item, a repository owned by a user rather than an
-organisation, an organisation that forbids its members to create projects, and a `Fixes`
-closing the effort issue at a merge. The first time one of those happens, report what GitHub
-printed.
+out from under its parent, moving one with `replace_parent`, closing an issue as not
+planned (and whether the board then shows it Done), adding an item that is already on the
+board, a pull request as an item, a repository owned by a user rather than an organisation,
+an organisation that forbids its members to create projects, and a `Fixes` closing the
+effort issue at a merge. The first time one of those happens, report what GitHub printed.
 
 What the board doesn't do:
 
-- **A merge by hand runs no MERGE.** The board still moves closed issues to Done by itself,
-  but nobody reports a missed `Fixes`. It shows at the next effort's orient, as a task still
-  In Progress.
+- **A merge by hand runs no MERGE.** The board still moves closed issues to Done by itself.
+  `PUBLISH` and `EDIT-PR` have already reported what the PR will close, so a missed `Fixes`
+  shows while the PR is open. One brought in after that, by a body edited by hand, shows at
+  the next effort's orient, as a task still In Progress.
 - **An abandoned effort stays as it was.** With the owner's yes, the main session sends
-  `STATUS` todo with `detach: yes` for its adopted tasks, so they are future work again,
+  `STATUS` todo with `detach: yes` (and each task's `from:`) for its adopted tasks, so they
+  are future work again,
   and `STATUS` not-planned for the effort issue and any workstream issue still open.
 - **Turning the setting on backfills nothing.** Efforts are tracked from then on; an open
   issue joins the board when an effort adopts it or the owner adds it.
