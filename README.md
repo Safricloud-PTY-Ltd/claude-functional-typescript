@@ -2,7 +2,7 @@
 
 A scaffold for building functional TypeScript with Claude Code, delivered by one command.
 
-It is not a library and not an application. It is the harness — five agents, a set of write
+It is not a library and not an application. It is the harness — six agents, a set of write
 and git guards, and four skills — that turns Claude Code into a team that writes contracts first,
 tests second, and implementations last, in a codebase where failures are values and I/O is
 kept at the edge.
@@ -43,7 +43,7 @@ few seconds.
 CLAUDE.md                     your project's instructions to Claude — fill in the placeholders
 .claude/
   settings.json               registers the hooks and makes orchestrator the default agent
-  agents/                     orchestrator, git-manager, architect, test-writer, implementor
+  agents/                     orchestrator, git-manager, designer, architect, test-writer, implementor
   hooks/                      write guard, git and gh guard, territories, post-edit typecheck/lint/test
   skills/
     code-standards/           the rulebook: how every function, type, and test is written
@@ -57,8 +57,9 @@ Nothing else is copied. The scaffold's own working files — this README, `bin/`
 
 ## How the workflow works
 
-Five agents, defined in [.claude/agents/](.claude/agents/), with a deliberate split: one
-coordinates, one keeps git, one designs per workstream, two write.
+Six agents, defined in [.claude/agents/](.claude/agents/), with a deliberate split: one
+coordinates, one keeps git, one designs what a user sees, one shapes the code per workstream,
+two write.
 
 - **orchestrator** is the session you talk to. It splits the ask into workstreams, gives
   each a **territory** — a set of files no other agent may write — and runs one architect
@@ -67,7 +68,14 @@ coordinates, one keeps git, one designs per workstream, two write.
   crosses territories.
 - **git-manager** does all the git and GitHub work except architects' own commits: the
   branch, the archive, push, the PR, review threads, CI and the merge. One per effort,
-  long-lived, reporting what git actually printed.
+  long-lived, reporting what git actually printed. With the **Project** setting on, it also
+  keeps a GitHub Project for the repo: each effort is an issue, its workstreams are
+  sub-issues, their tasks are sub-issues of those, and an issue that waits on a person is
+  labelled `blocked-on-product-owner` or `blocked-on-dev-owner`.
+- **designer** works before any plan when the ask adds or reshapes something a user sees.
+  It asks you questions that narrow the direction, publishes three options as shareable
+  pages with Claude Code's Artifact tool, and writes up the one you pick as a spec for the
+  architect. It writes no product code.
 - **architect** owns one workstream. It restates its part of the ask, reads the code, writes
   a review and a plan, and writes a **contract** — a signature, its JSDoc, and a stub body —
   for every function before any of them exist. It dispatches the other two, verifies what
