@@ -254,7 +254,9 @@ Parsed is not the same as bounded. These held up review after review:
 
 ## Tests
 
-- One test file per contract, colocated, `describe(fnName)` at the top level.
+- One normal test file per contract (`<base>.test.ts(x)`), colocated, `describe(fnName)` at
+  the top level. Beside it may sit a `<base>.test-d.ts` for its types (below) and a slow or
+  perf sibling (see the suites below).
 - One `index.test.ts` per module, importing only from `./index.ts`, exercising the barrel as
   a caller would. Ports are exercised through the module's fake, never a mock.
 - Tests are written from the contract, not the implementation. The test-writer reads the

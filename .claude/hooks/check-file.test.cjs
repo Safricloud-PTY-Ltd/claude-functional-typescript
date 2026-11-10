@@ -12,9 +12,11 @@ const { spawnSync } = require('node:child_process');
 
 const ORDERS = ['packages', 'app', 'src', 'orders'];
 const REL = ORDERS.join('/');
-// Stubs for node_modules/.bin, which the hook prefers over pnpm exec. tsgo is absent, so the
-// hook falls back to tsc; vitest records its arguments, one run per line.
+// Stubs for node_modules/.bin, which the hook prefers over pnpm exec. A tsgo that fails its
+// --version probe sends the hook to tsc without reaching the machine's pnpm; vitest records
+// its arguments, one run per line.
 const BIN = {
+  tsgo: '#!/bin/sh\nexit 1\n',
   tsc: '#!/bin/sh\nexit 0\n',
   eslint: '#!/bin/sh\nexit 0\n',
   vitest: '#!/bin/sh\nprintf \'%s\\n\' "$*" >> vitest-args.log\nexit 0\n',
