@@ -187,6 +187,11 @@ built beside the chosen design.
 - **No designer** for a change with no UI.
 - **The designer writes only in its folder**, and the write guard holds it there. That
   folder is in the reserve, so no territory includes it.
+- **Check the format ignore file before the spawn.** The root `.prettierignore` needs the
+  line `contributions/**/design`. A project bootstrapped before the designer existed lacks
+  it, and the designer runs no formatter, so its pages and notes then fail the pre-commit
+  and pre-push format checks. Add the line as a reserve edit, creating the file if there is
+  none.
 
 ## The board
 
@@ -206,7 +211,7 @@ the repo. Its file's **The board** has the objects and the commands. You tell it
   `effort`.
 - **When a workstream's architect is spawned**: `STATUS` in-progress for its issue and for
   the tasks adopted under it. With one workstream, send it for the adopted tasks when that
-  architect is spawned.
+  architect is spawned; with no architect (a change you make yourself), when you start it.
 - **When it reports DONE and you've verified it**: `STATUS` done for the workstream issue,
   which closes it. Don't leave it for the merge, which the owner may do by hand. Its
   adopted tasks stay In Progress until the PR's `Fixes` closes them. Every adopted task is

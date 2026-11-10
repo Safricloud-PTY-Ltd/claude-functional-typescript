@@ -1,5 +1,6 @@
 // Tests for guard-writes.sh: which test files a test-writer may write, slow and perf tests
-// included. Run from a shell whose `bash` is the one the hooks use (Git Bash on Windows):
+// included, and where a designer may write. Run from a shell whose `bash` is the one the hooks
+// use (Git Bash on Windows):
 //   node --test .claude/hooks/guard-writes.test.cjs
 'use strict';
 const test = require('node:test');
@@ -67,6 +68,9 @@ test('an implementor may not edit a slow or perf test', (t) => {
 
 test('a designer may write inside its effort design folder, whether or not the file exists yet', (t) => {
   const guard = setup(t, []);
+  // design.md exists on disk; the other two don't yet.
+  fs.mkdirSync(path.join(guard.repo, ...DESIGN), { recursive: true });
+  fs.writeFileSync(path.join(guard.repo, ...DESIGN, 'design.md'), '');
   for (const file of ['design.md', 'option-a.html', path.join('assets', 'logo.svg')]) {
     const r = guard.at('designer', ...DESIGN, file);
     assert.equal(r.status, 0, `${file}: ${r.stderr}`);

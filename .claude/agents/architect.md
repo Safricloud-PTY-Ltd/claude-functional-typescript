@@ -339,7 +339,10 @@ operation for the contribution except your own commits. Its jobs and report are 
 ## The designer
 
 When you are the main session and the ask adds or reshapes something a user sees, a
-designer works before you write the review. Spawn one `designer` in the background with a
+designer works before you write the review. Before you spawn it, check that the root
+`.prettierignore` has the line `contributions/**/design`, and add it, creating the file if
+there is none: a project bootstrapped before the designer existed lacks the line, and the
+designer's pages then fail the format checks. Spawn one `designer` in the background with a
 brief: the contribution and its id, the UI part of the ask and its source, its folder
 (`contributions/in-progress/<id>/design/`), and the UI code you found while orienting. It
 works in three turns, and you take each to the owner through `AskUserQuestion`:

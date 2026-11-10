@@ -69,7 +69,7 @@ You are resumed with the answers.
    `Artifact`, `ArtifactComments` and `ArtifactData`, and neither `ArtifactCheck` nor
    `AskUserQuestion`, though the file grants both. Then read the page against the skill's
    page contract before you publish, and say in `design.md` that it went out unseen.
-   Publishing the same file again later keeps its link.
+   Publishing the same file again later in this session keeps its link.
 5. Add to `design.md`, for each option: its name, its link, the idea in a sentence, what it
    is best at, what it costs (which existing components it reuses, what would be new), and
    what the page fakes.
@@ -82,9 +82,11 @@ You are resumed with the owner's choice, and often a change ("the second, with t
 one's header").
 
 1. Apply the change to the chosen option's file and publish it again, so the link the owner
-   already has shows the final design. The owner may also have commented on a page itself:
-   read those with `ArtifactComments` where you have it, and treat them as part of the
-   choice.
+   already has shows the final design. If this session didn't publish it (you were spawned
+   again), read the page first by its link in `design.md`, then publish with that link as
+   `url`: without it the tool makes a new page with a new link. The owner may also have
+   commented on a page itself: read those with `ArtifactComments` where you have it, and
+   treat them as part of the choice.
 2. Add **Chosen** to `design.md`: the option and its link, then the spec the architect
    builds from:
    - layout, by region, at desktop and phone width;
@@ -119,7 +121,9 @@ wrong if the answer doesn't say, then design three new options. Never come back 
   report. Run as the main session (`claude --agent designer`), you ask them yourself through
   `AskUserQuestion` at the same three points and carry on. There is no brief then, so ask
   for the effort id first. No write guard holds you either, because it fences sub-agents
-  only: the folder rule is yours to keep, and the owner commits the folder.
+  only: the folder rule is yours to keep, and the owner commits the folder. Before you
+  write, check that the root `.prettierignore` has the line `contributions/**/design`. If it
+  doesn't, tell the owner the line to add, or the folder will fail the format checks.
 - **You don't run git.** The main session has your folder committed.
 
 ## Report
