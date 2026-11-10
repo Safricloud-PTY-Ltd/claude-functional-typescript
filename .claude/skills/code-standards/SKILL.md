@@ -249,7 +249,7 @@ Parsed is not the same as bounded. These held up review after review:
 - **A regex over input is checked for ambiguity at every boundary**, not just the first.
   Two adjacent classes that can match the same character make it exponential. Prefer a small
   scanner, or alternatives that can't overlap, and prove linearity with growing adversarial
-  inputs, never one input.
+  inputs, never one input. That proof is a perf test (`<base>.perf.test.ts`, see Tests).
 - **Two functions that must agree on one rule share a named predicate**, not two guards.
 
 ## Tests
@@ -273,6 +273,33 @@ Parsed is not the same as bounded. These held up review after review:
   only the barrel. Coverage excludes `test-support/`.
 - A fake replaces a dependency, never the thing under test. A fake server that implements
   the routes itself leaves the real server's routing untested.
+- **Three suites, told apart by file name.** A test goes in the suite its pass depends on:
+  - `<base>.test.ts(x)`, the normal suite: the result is the same on any machine at any load.
+    A test that drives time through a fake clock or an injected sleep belongs here. It runs
+    in `pnpm test`, and so in `pnpm check`, the pre-push hook and CI.
+  - `<base>.slow.test.ts(x)`, the slow suite: the assertion is about behaviour, but the test
+    waits on the real clock or is long by nature and needs a raised timeout (real sleeps and
+    timers, thousands of records, a spawned process per test, hundreds of UI events).
+    `pnpm test:slow` runs it; CI runs it inside `pnpm coverage`. Never `pnpm check` or
+    pre-push.
+  - `<base>.perf.test.ts(x)`, the perf suite: the assertion itself is about elapsed time or a
+    growth rate ("under 50 ms", "linear in n"), so the result depends on the machine.
+    `pnpm perf` runs it, by hand only: never check, pre-push or CI.
+
+  All three sit beside the contract. No contract's file name ends in `.slow` or `.perf`;
+  those suffixes name suites. Prefer a fake clock to a slow test where the contract
+  allows one, and never raise a timeout to keep a test in the normal suite: a test that needs
+  one is a slow test.
+- **A new or changed slow or perf test is run by file, once red and once green**, with the
+  command its brief names: `pnpm exec vitest run --mode slow <file>` (or `--mode perf`),
+  against the stub and then against the body. That is the whole of its place in the loop. The
+  per-edit hook doesn't run it, a normal-mode `vitest run` or `vitest related` doesn't
+  collect it, and nobody runs `pnpm perf` unasked. Moving a test into a suite is a move, not
+  a verification.
+- When a test moves to its slow or perf sibling, a helper both files need goes in the
+  domain's `test-support/` module, as for any shared builder. If the helper reaches something
+  the barrel doesn't export, copy it into the sibling rather than widen the barrel for a
+  test. A constant or a few lines may simply be duplicated.
 - **Property tests and their traps:**
   - Generate `fc.double` wherever a number comes from text; `fc.integer` can't see `5.5`.
   - Draw dangerous keys (`__proto__`, `constructor`, `prototype`) from an explicit pool when a
@@ -286,7 +313,7 @@ Parsed is not the same as bounded. These held up review after review:
 - A race needs a test that reaches it: a fake clock that settles every sleep at once can't
   test cancellation mid-wait. Let the test decide what a sleep waits on.
 - Timing bounds are set from a measurement under load, not idle. Measure the duration
-  before blaming the subject of a timeout.
+  before blaming the subject of a timeout. A test that asserts a timing bound is a perf test.
 - A falsification probe confirms that it changed the code (not just the file, or a
   comment), and a probe that stays green is read before it's trusted.
 

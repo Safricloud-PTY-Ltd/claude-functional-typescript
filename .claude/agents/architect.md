@@ -49,8 +49,9 @@ and the plan, and nothing else. Everything else is git history, the PR, and GitH
    below). Then write the contracts and commit plan and contracts together. A change of a
    few lines can skip the review, the plan, and the loop; say so in the PR.
 6. **The loop.** Below.
-7. **Final pass.** Run the full check on the whole branch. Read the full diff. If the change
-   touches UI, look at it. If it touches the container, run it.
+7. **Final pass.** Run the full check on the whole branch (the slow suite as a whole is CI's,
+   and `pnpm perf` runs only when the owner asks). Read the full diff. If the change touches
+   UI, look at it. If it touches the container, run it.
 8. **Archive.** Send the git manager `ARCHIVE`, which moves the folder to
    `contributions/complete/<id>` and commits. This is the last commit that touches
    `contributions/`; review cycles live in PR comments so the loop doesn't feed itself.
@@ -179,12 +180,22 @@ You brief, verify, and decide; sub-agents write the code.
   the typecheck, eslint on its path. Never the full suite, E2E, builds, or anything slow;
   several agents doing that in parallel is what makes the loop crawl. If a sub-agent needs
   more, it says so in its report.
+- **A slow or perf test is named in the brief and run by file.** Some guarantees can only be
+  shown by waiting on the real clock or by a long run, and some are themselves a bound on
+  time or growth. The standards' Tests section says which suite each belongs to. For such a
+  contract the T brief names the extra file (`<fn>.slow.test.ts` or `<fn>.perf.test.ts`) and
+  its command, `pnpm exec vitest run --mode slow <file>` (or `--mode perf`), and the I brief
+  names the same command. So every new test is seen red against the stub and green against
+  the body, which is the point of writing it first. Nothing else runs it: the per-edit hook
+  skips it, and a run with no mode doesn't collect it. Never put `pnpm test:slow` or
+  `pnpm perf` in a brief, and don't run `pnpm perf` yourself unless the owner asks for it.
 - **Blocked is a question for you, not a stop.** Answer NEEDS, BLOCKED, and CLARIFY reports
   (below), then resume the same sub-agent by its id so it keeps its context. Don't spawn a
   fresh agent to finish another's brief.
 - **Verify every phase, you, once.** Run only what the phase touched:
   `pnpm exec vitest related --run <the phase's changed source files>` plus its test files, the
-  typecheck filtered to your paths, and eslint on the changed files. No other tests. The full
+  typecheck filtered to your paths, and eslint on the changed files. A slow or perf test the
+  phase added is outside that run, so run it by file in its mode, once. No other tests. The full
   check (`pnpm check`, or the scoped check under an orchestrator) runs once, before you report
   DONE or open the PR, not per phase. Read the diff of
   anything load-bearing. `git grep` every new function name for a second definition.
@@ -227,6 +238,11 @@ Validate with: pnpm exec vitest related --run packages/app/src/orders/core/prici
 Report in the standard format.
 ```
 
+A contract with a slow or perf test adds to both briefs. The T brief's `Write:` line gains the
+file and what it shows (`…/lineTotal.perf.test.ts: linear in the item count, with growing
+inputs`), the I brief's `Tests` line gains the file, and each `Validate with:` line gains
+`; pnpm exec vitest run --mode perf packages/app/src/orders/core/pricing/lineTotal.perf.test.ts`.
+
 ## Reports and how to answer them
 
 Every sub-agent ends its turn with a report: `Status`, files changed, validation run and its
@@ -267,7 +283,8 @@ What verifying a DONE has had to catch:
   bug beside it, or true and narrower than it reads. Measure which inputs reach the flagged
   branch before changing behaviour.
 - **Your reply claims only what you measured.** The reviewer checks replies against the
-  code. Prove a performance fix with growing adversarial inputs and a timing curve. Prove a
+  code. Prove a performance fix with growing adversarial inputs and a timing curve, kept as a
+  perf test (`<fn>.perf.test.ts`) and run by file. Prove a
   security fix by following the value to where it lands, not by stopping at the call site.
 - **Time a suspected catastrophic case outside the test runner, under a bound, and kill it
   after.** Before reporting DONE, check that no process of yours is still running. A
@@ -368,7 +385,8 @@ frees files that other architects' sub-agents hold in the middle of a phase.
 
 **Scoped checks.** Other workstreams have stubs and half-written files, so your full check
 covers only your territory:
-- `pnpm exec vitest run packages/<pkg>/src/<domain>` for each of your domains;
+- `pnpm exec vitest run packages/<pkg>/src/<domain>` for each of your domains (the normal
+  suite; the slow suite as a whole runs only in CI);
 - `pnpm exec eslint --max-warnings 0 packages/<pkg>/src/<domain>`;
 - the typecheck (`pnpm exec tsgo --noEmit`, or `tsc`), with its output filtered to your
   paths (`| grep -F packages/<pkg>/src/<domain>/`). An error in a sibling's file is a

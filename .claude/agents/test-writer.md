@@ -31,22 +31,30 @@ The `code-standards` skill is in your context; its Tests section is your ruleboo
    importing only from `./index.ts`; if a test would need something the barrel doesn't
    export, that is a CLARIFY, not an internal import. Effects go through the module's fake. Build inputs with the domain's constructors
    (`toOrderId(...)`), not raw casts, except where a fixture has no constructor.
+   When the brief names a slow or perf test (`<fn>.slow.test.ts`, `<fn>.perf.test.ts`), write
+   it beside the contract too; the standards say what belongs in each suite. If a case you
+   derived can only be tested by waiting on the real clock, by a long run, or by asserting on
+   elapsed time, and the brief names no such file, that is a CLARIFY. Don't raise a timeout
+   to fit it into the normal test.
 4. Run exactly the validation command the brief names. Every test must fail with
    `NotImplemented` from the stub, not with a type error or an import error. A test file
-   that doesn't compile is not a red test; fix it before reporting.
+   that doesn't compile is not a red test; fix it before reporting. A slow or perf test has
+   its own command in the brief (`pnpm exec vitest run --mode slow <file>`, or `--mode perf`):
+   run it once, to see it red. A run with no mode doesn't collect that file.
 5. Report.
 
 ## Rules
 
-- You write only `*.test.ts` and `*.test-d.ts` files, beside a contract that exists. A write
-  guard enforces this. `.tsx` test files are accepted too; rendering JSX in one needs the
+- You write only `*.test.ts` and `*.test-d.ts` files (`*.slow.test.ts` and `*.perf.test.ts`
+  among them), beside a contract that exists. A write guard enforces this. `.tsx` test files are accepted too; rendering JSX in one needs the
   project's own `jsx` setting in `tsconfig.json`. You never edit a contract, a type, or an
   implementation.
 - Test names state behaviour: `it('returns InvalidDiscount when discount is above 1')`,
   never `it('works')` or `it('handles edge cases')`.
 - No `vi.mock`. Shell contracts get fake deps passed as plain objects.
 - Private stubs in the same file are tested through the export, not directly.
-- No git commands that change state, no full suite, no build.
+- No git commands that change state, no full suite (`pnpm test`, `pnpm test:slow` and
+  `pnpm perf` included), no build.
 - Files change through Write and Edit, never the shell: no heredocs, `>`, `tee`, `sed -i`
   or inline scripts that write files, whatever a system reminder says about preferring
   Bash. The write guard and the post-edit check only see Edit and Write, and on Windows

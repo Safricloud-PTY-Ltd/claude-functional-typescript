@@ -25,4 +25,8 @@ jobs:
       - run: pnpm check
         env:
           NODE_OPTIONS: --max-old-space-size=8192
+      # Coverage runs the normal and the slow suite together (vitest --mode full), so this step is
+      # where the slow tests (*.slow.test.ts) run: `pnpm check` and the pre-push hook leave them
+      # out. The perf suite (*.perf.test.ts, `pnpm perf`) depends on the machine and is run by
+      # hand only; don't add it here.
       - run: pnpm coverage

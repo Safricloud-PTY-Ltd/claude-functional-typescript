@@ -27,6 +27,7 @@ package versions (see "Versions" below); copy them as they are, then adjust with
 | Every directory in a package's `src/` is a module entered only through its `index.ts`, at every depth ≤5; no own-barrel imports; barrels only re-export; `core/` never imports `shell/`/`app/`; `core/` imports nothing from node_modules but neverthrow and `#shared`; `shared` is a leaf; a package imports no other package but `shared`, and that only through its barrel; nothing imports a package's `src/app/`; no cycles, orphans, or unresolvable imports; prod never imports tests | `.dependency-cruiser.cjs`                                                                  |
 | No unused files, exports, or dependencies                                                                                                                                                                                                                                                                                                              | `knip`                                                                                     |
 | Tests red before green, type tests, coverage thresholds                                                                                                                                                                                                                                                                                                | `vitest` (`typecheck.enabled`, `coverage.thresholds`)                                      |
+| A test that depends on the clock or the machine can't refuse a push: slow tests run in CI only, perf tests by hand only | `vitest --mode` (`slow`, `perf`, `full`) in each package's `vitest.config.ts`; `pnpm test:slow`, `pnpm perf`, `pnpm coverage` |
 | Tests that assert something                                                                                                                                                                                                                                                                                                                            | Stryker mutation score, by hand                                                            |
 | Nothing lands unformatted/unlinted/untyped                                                                                                                                                                                                                                                                                                             | `lefthook` pre-commit and pre-push, CI `pnpm check`                                        |
 | Fresh/malicious package versions, install scripts                                                                                                                                                                                                                                                                                                      | `pnpm-workspace.yaml` `minimumReleaseAge`, `allowBuilds`                                   |
@@ -110,8 +111,36 @@ comment saying which contribution turns it back to `error`.
   source. The alias resolves it from the config file instead.
 - **Adding a package** copies `packages/app`'s shape: a `package.json` with the `"#shared"`
   and `"#*"` imports and an `"@<project-name>/shared": "workspace:*"` dependency, a
-  `vitest.config.ts` with the alias, and a `knip.json` workspace. The root configs already
-  glob `packages/*`, and ESLint's default-project cap is raised for their config files.
+  `vitest.config.ts` with the alias and the suite lines (below), and a `knip.json` workspace.
+  The root configs already glob `packages/*`, and ESLint's default-project cap is raised for
+  their config files.
+- **Three test suites, chosen by vitest mode.** Each package's `vitest.config.ts` is a function
+  of the mode. With none it runs the normal suite: every `*.test.{ts,tsx}` except the next two.
+  `--mode slow` runs only `*.slow.test.{ts,tsx}`, `--mode perf` only `*.perf.test.{ts,tsx}`,
+  and `--mode full` the normal and slow suites together. Any other mode is the normal suite, so
+  a misspelt mode runs the wrong tests without saying so. The root run passes its mode to every
+  project, and a file can be run alone in its mode (`vitest run --mode slow <file>`).
+  - `pnpm test` (and so `pnpm check`, pre-push and CI's check step) is the normal suite.
+  - `pnpm coverage` is mode `full`. That is where CI runs the slow suite, once, and it lets
+    code only a slow test reaches count toward the thresholds.
+  - `pnpm test:slow` and `pnpm perf` run one suite each. No hook and no workflow runs
+    `pnpm perf`.
+  - Mutation testing stays on the normal suite, so code only a slow test reaches shows as
+    surviving mutants. A wall-clock test is a perf test now, which keeps it out of Stryker's
+    sandbox, where it would fail (see Versions).
+  - A mode, because the alternatives fail: an env variable in a pnpm script doesn't work under
+    cmd on Windows, and a second config that `extends` the first gets its `include`
+    concatenated with the first's by Vite.
+  - Every package's config repeats the suite lines. A package whose config lacks them runs its
+    slow and perf tests in every `pnpm check`.
+  - A project bootstrapped before the suites gets the hooks and the agents' rules with a
+    `--force` upgrade, but not these configs. Copy four things from `assets/`: the `test:slow`,
+    `perf` and `coverage` scripts, the suite lines into each package's `vitest.config.ts`, the
+    `no-own-barrel` lookahead, and the comments in `ci.yml` and `lefthook.yml`. Until then a
+    test named `*.slow.test.ts` or `*.perf.test.ts` still runs in `pnpm test`.
+  - The file names still end in `.test.ts`, so ESLint's test relaxations, coverage's and
+    Stryker's excludes and knip treat them as tests. `no-own-barrel` exempts a module's
+    `index.slow.test.ts` and `index.perf.test.ts` as it does `index.test.ts`.
 - **dependency-cruiser generates depth 0 too.** A package's `src/` is itself a module, so
   `packages/shared/src/index.ts` is a depth-0 barrel and keeps the barrel-only and
   own-barrel rules.
@@ -155,9 +184,10 @@ installs them before any code imports them, and `dot` (Graphviz, for `deps:graph
 2026-10-12 (Stryker 10.0, pnpm 11), on a project of 780 mutated files, and needed three changes.
 Under pnpm's isolated layout, Stryker can't discover `@stryker-mutator/vitest-runner` by itself,
 so `plugins` names it. The initial test run of a large suite outlasts the default five-minute
-`dryRunTimeoutMinutes`, so it is 30. And a test that asserts wall-clock time, or reads source
-files as text, fails in Stryker's instrumented sandbox and nowhere else: make such tests skip
-themselves under mutation, or keep them out of the run with a Stryker-only vitest config
+`dryRunTimeoutMinutes`, so it is 30. And a test that asserts wall-clock time fails in
+Stryker's instrumented sandbox and nowhere else; since 2026-11-10 it is a perf test, which
+Stryker's run doesn't collect. A test that reads source files as text fails there too: make it
+skip itself under mutation, or keep it out of the run with a Stryker-only vitest config
 (`vitest.configFile` in `stryker.config.json`).
 
 Re-validated downstream on 2026-10-28 (genesys-alerts-manager, a fresh bootstrap) with eslint
@@ -210,6 +240,28 @@ typescript-eslint 8.72.1, vitest 5.0.5, knip 6.44.1, dependency-cruiser 18.7.1, 
 - A sample domain whose `core/` imports `#shared` passed lint, depcruise, vitest and a run
   under Node (`#orders` → `#shared`).
 
+Three test suites added on 2026-11-10, after genesys-auth-provider, which split a perf suite
+out on 2026-11-09 after a slow jsdom test refused three pushes under the suite's own load. The
+slow suite and mode `full` are new here. Measured in one place only: a scratch project on
+Windows made by copying these assets and installing the toolchain without lefthook (vitest
+5.1.0, knip 6.44, dependency-cruiser 18.7, eslint 10.14, Stryker 10.1.1, pnpm 11.24), with a
+slow test, a perf test and a barrel-level `index.slow.test.ts` planted in `packages/shared`.
+- `vitest list` collected the 4 starter files with no mode, the 2 slow files with
+  `--mode slow`, the perf file with `--mode perf`, and the starter and slow files (6) with
+  `--mode full`, each through the root config's `projects`.
+- One file ran alone in its mode. The same slow file with no mode exited 1 with "No test files
+  found", which is why the per-edit hook gives slow and perf tests no vitest run.
+- `pnpm check` passed with the three files present; `pnpm coverage` ran 6 files at 100%; knip
+  reported nothing for them.
+- dependency-cruiser refused `index.slow.test.ts` (`no-own-barrel-0`) before the lookahead
+  changed, and passed after.
+- `pnpm mutation` scored 100, and its dry run ran the normal suite's 3 tests only.
+- A `.tsx` slow test and a `.tsx` perf test planted in `packages/app` were each collected in
+  their own mode only, and the slow one ran alone by file.
+- `process.env.NODE_ENV` was `test` in every mode; only `import.meta.env.MODE` changed.
+
+Not measured: Linux, and the CI workflow itself.
+
 When a tool's major version changes, re-run every script, re-check the negative cases (a
 `let`, a nested named function, a `throw` in core, a `core/` → `shell/` import, a cross-domain
 internal import, an import of another package, an import of `shared` past its barrel), and
@@ -227,15 +279,15 @@ assets/
   vitest.config.ts           projects: packages/*; v8 coverage with thresholds across them
   knip.json                  one workspace per package
   .dependency-cruiser.cjs    architecture rules
-  lefthook.yml               pre-commit: prettier, eslint, typecheck (skipped while territories are live); pre-push: pnpm check
+  lefthook.yml               pre-commit: prettier, eslint, typecheck (skipped while territories are live); pre-push: pnpm check (the normal test suite only)
   stryker.config.json
   gitignore                  copied to the root as .gitignore; includes .claude/locks/ and .claude/territories/
   gitattributes              copied to the root as .gitattributes; LF everywhere, so hooks run on Windows
   .github/dependabot.yml     weekly, grouped
-  .github/workflows/ci.yml   pnpm check + coverage on PR and main
+  .github/workflows/ci.yml   pnpm check + coverage (which runs the slow suite) on PR and main; never the perf suite
   .github/workflows/nightly.yml  mutation testing
   packages/shared/package.json      @<project-name>/shared; exports its barrel
-  packages/shared/vitest.config.ts  the shared project; type tests off under Stryker
+  packages/shared/vitest.config.ts  the shared project; the normal, slow and perf suites by mode; type tests off under Stryker
   packages/shared/src/{index,stub,brand,errors}.ts   the primitives the standards refer to
   packages/shared/src/errors.test.ts  keeps coverage green on the starter tree
   packages/shared/src/index.test.ts   the barrel's acceptance test; also pins that a module's
@@ -243,6 +295,6 @@ assets/
   packages/shared/src/brand.test-d.ts  type tests for Brand's nominal separation (2026-10-31)
   packages/shared/src/index.test-d.ts  the barrel's type-level acceptance test (Brand re-export)
   packages/app/package.json         @<project-name>/app; #shared and #* imports, start script
-  packages/app/vitest.config.ts     the app project; aliases #shared for Stryker
+  packages/app/vitest.config.ts     the app project; the same suites; aliases #shared for Stryker
   packages/app/src/app/main.ts      composition-root placeholder
 ```

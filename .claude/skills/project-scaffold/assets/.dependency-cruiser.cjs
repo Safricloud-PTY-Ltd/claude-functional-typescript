@@ -36,8 +36,10 @@ const perDepth = (n) => [
     severity: 'error',
     // The module's own index.test(-d).ts is the one insider that imports the barrel: it is the
     // acceptance test code-standards requires. Exempted in the lookahead, at the module's own
-    // level only, so a nested module's test still can't reach a parent barrel (issue #14).
-    from: { path: `^(${dirs(n)})/(?!index\\.ts$|index\\.test(-d)?\\.tsx?$)` },
+    // level only, so a nested module's test still can't reach a parent barrel (issue #14). Its
+    // slow and perf siblings (index.slow.test.ts, index.perf.test.ts) are the same test, split
+    // by how long it takes.
+    from: { path: `^(${dirs(n)})/(?!index\\.ts$|index(\\.(slow|perf))?\\.test(-d)?\\.tsx?$)` },
     to: { path: '^$1/index\\.ts$' },
   },
   {
