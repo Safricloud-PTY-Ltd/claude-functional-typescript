@@ -144,8 +144,8 @@ project. Two things follow from that:
   (and this repo's) says `"type": "module"`; as a `.js` file it would load as ESM, `require`
   would be undefined, and every guard would fail closed, blocking all git and all sub-agent
   writes.
-- **The hooks have tests, run with node's own runner**:
-  `node --test .claude/hooks/*.test.cjs .claude/skills/codex-subagents/*.test.cjs`. Two of them
+- **The hooks, the Codex runner and the asset vitest configs have tests, run with node's own
+  runner**: `node --test .claude/hooks/*.test.cjs .claude/skills/*/*.test.cjs`. Two of them
   spawn `bash`, so run them from the shell the hooks use. On Windows that is Git Bash: from
   PowerShell, `bash` can resolve to WSL's.
 

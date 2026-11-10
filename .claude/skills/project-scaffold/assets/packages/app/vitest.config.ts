@@ -18,7 +18,8 @@ const SUITES: Readonly<Record<string, Suite>> = {
 };
 
 export default defineConfig(({ mode }) => {
-  const [include, exclude] = SUITES[mode] ?? NORMAL;
+  // Object.hasOwn: the mode is an outside string (see the shared config).
+  const [include, exclude] = (Object.hasOwn(SUITES, mode) ? SUITES[mode] : undefined) ?? NORMAL;
   return {
     // Resolve `#shared` from this file rather than through node_modules: under Stryker the
     // sandbox's node_modules is a junction back to the original tree, so the package link would

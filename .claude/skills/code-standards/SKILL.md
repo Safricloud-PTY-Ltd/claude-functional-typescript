@@ -289,10 +289,12 @@ Parsed is not the same as bounded. These held up review after review:
   All three sit beside the contract. No contract's file name ends in `.slow` or `.perf`;
   those suffixes name suites. Prefer a fake clock to a slow test where the contract
   allows one, and never raise a timeout to keep a test in the normal suite: a test that needs
-  one is a slow test.
-- **A new or changed slow or perf test is run by file, once red and once green**, with the
-  command its brief names: `pnpm exec vitest run --mode slow <file>` (or `--mode perf`),
-  against the stub and then against the body. That is the whole of its place in the loop. The
+  one is a slow test. Logic a slow test exercises also gets a normal test where the contract
+  allows one (a fake clock, a smaller input): mutation testing runs the normal suite only.
+- **A new or changed slow or perf test is run by file, red and then green**, with the
+  command its brief names: `pnpm exec vitest run --mode slow <file>` (or `--mode perf`). The
+  test-writer runs it against the stub, the implementor against the body, and the architect
+  once more at phase verification. That is the whole of its place in the loop. The
   per-edit hook doesn't run it, a normal-mode `vitest run` or `vitest related` doesn't
   collect it, and nobody runs `pnpm perf` unasked. Moving a test into a suite is a move, not
   a verification.

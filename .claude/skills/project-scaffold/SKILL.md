@@ -125,9 +125,12 @@ comment saying which contribution turns it back to `error`.
     code only a slow test reaches count toward the thresholds.
   - `pnpm test:slow` and `pnpm perf` run one suite each. No hook and no workflow runs
     `pnpm perf`.
-  - Mutation testing stays on the normal suite, so code only a slow test reaches shows as
-    surviving mutants. A wall-clock test is a perf test now, which keeps it out of Stryker's
-    sandbox, where it would fail (see Versions).
+  - Mutation testing stays on the normal suite, so Stryker reports every mutant in code only a
+    slow test reaches as `NoCoverage`, and each counts against the score. One such function
+    took the starter tree from 100 to 60, under the `break` threshold, so `pnpm mutation`
+    exited 1. Cover the logic with a normal test (a fake clock, a smaller input) where the
+    contract allows one. A wall-clock test is a perf test now, which keeps it out of
+    Stryker's sandbox, where it would fail (see Versions).
   - A mode, because the alternatives fail: an env variable in a pnpm script doesn't work under
     cmd on Windows, and a second config that `extends` the first gets its `include`
     concatenated with the first's by Vite.
@@ -259,6 +262,11 @@ slow test, a perf test and a barrel-level `index.slow.test.ts` planted in `packa
 - A `.tsx` slow test and a `.tsx` perf test planted in `packages/app` were each collected in
   their own mode only, and the slow one ran alone by file.
 - `process.env.NODE_ENV` was `test` in every mode; only `import.meta.env.MODE` changed.
+- Modes `constructor`, `__proto__` and `toString` threw a TypeError from the suite lookup
+  until it used `Object.hasOwn`; with it, each ran the 4 normal files, as a misspelt mode does.
+  `assets.test.cjs`, beside `assets/`, pins the table for both configs under node with a
+  stubbed `vitest/config`; change the suite lines and it must still pass.
+- A function reached only by a slow test: 2 mutants, both `NoCoverage`, score 60, exit 1.
 
 Not measured: Linux, and the CI workflow itself.
 

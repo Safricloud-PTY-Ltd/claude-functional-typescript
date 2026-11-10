@@ -27,7 +27,9 @@ const SUITES: Readonly<Record<string, Suite>> = {
 };
 
 export default defineConfig(({ mode }) => {
-  const [include, exclude] = SUITES[mode] ?? NORMAL;
+  // Object.hasOwn, because the mode is an outside string: `constructor` or `__proto__` would
+  // otherwise fetch an inherited value that isn't a suite, and the config would throw.
+  const [include, exclude] = (Object.hasOwn(SUITES, mode) ? SUITES[mode] : undefined) ?? NORMAL;
   return {
     test: {
       name: 'shared',

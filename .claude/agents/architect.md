@@ -186,9 +186,11 @@ You brief, verify, and decide; sub-agents write the code.
   contract the T brief names the extra file (`<fn>.slow.test.ts` or `<fn>.perf.test.ts`) and
   its command, `pnpm exec vitest run --mode slow <file>` (or `--mode perf`), and the I brief
   names the same command. So every new test is seen red against the stub and green against
-  the body, which is the point of writing it first. Nothing else runs it: the per-edit hook
-  skips it, and a run with no mode doesn't collect it. Never put `pnpm test:slow` or
-  `pnpm perf` in a brief, and don't run `pnpm perf` yourself unless the owner asks for it.
+  the body, which is the point of writing it first. Beyond those two runs and your own at
+  phase verification (below), nothing in the loop runs it: the per-edit hook skips it, and a
+  run with no mode doesn't collect it. CI runs the slow ones, in its coverage step. Never put
+  `pnpm test:slow` or `pnpm perf` in a brief, and don't run `pnpm perf` yourself unless the
+  owner asks for it.
 - **Blocked is a question for you, not a stop.** Answer NEEDS, BLOCKED, and CLARIFY reports
   (below), then resume the same sub-agent by its id so it keeps its context. Don't spawn a
   fresh agent to finish another's brief.
