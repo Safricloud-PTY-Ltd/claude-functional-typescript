@@ -144,6 +144,14 @@ comment saying which contribution turns it back to `error`.
   - The file names still end in `.test.ts`, so ESLint's test relaxations, coverage's and
     Stryker's excludes and knip treat them as tests. `no-own-barrel` exempts a module's
     `index.slow.test.ts` and `index.perf.test.ts` as it does `index.test.ts`.
+- **A designer's folder is outside the format check.** `.prettierignore` lists
+  `contributions/**/design`: the designer agent writes its pages and notes there, runs no
+  formatter, and publishes the pages as they are. Without the line a design folder fails
+  `prettier --check .`, and so `pnpm check` and the pre-push hook (measured in a scratch
+  project, 2026-11-10). A project bootstrapped before the designer gets the agent with a
+  `--force` upgrade but not this line, because the upgrade copies `.claude/` and
+  `CLAUDE.md` only. The main session checks for it before it spawns a designer and adds it; a
+  designer run alone tells the owner to.
 - **dependency-cruiser generates depth 0 too.** A package's `src/` is itself a module, so
   `packages/shared/src/index.ts` is a depth-0 barrel and keeps the barrel-only and
   own-barrel rules.

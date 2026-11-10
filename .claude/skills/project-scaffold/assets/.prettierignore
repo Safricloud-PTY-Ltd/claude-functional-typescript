@@ -10,3 +10,6 @@ reports
 .claude/agents
 .claude/hooks
 .claude/skills
+# A designer's mock-ups and notes: written by an agent that runs no formatter, and pages that are
+# published as they are.
+contributions/**/design

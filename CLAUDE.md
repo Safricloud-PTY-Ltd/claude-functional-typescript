@@ -24,6 +24,14 @@ drizzle), and the default branch.>
   agents started with the Agent tool. `codex`: they run on Codex (GPT, per **Models**)
   through the `codex-subagents` skill, outside Claude's hooks, with a file check in place of
   the write guard. Architects are Claude either way.
+- **Project:** `yes` | `no` — `yes`: the git manager keeps one GitHub Project for this
+  repository and tracks every effort on it: the effort as an issue, its workstreams as
+  sub-issues of that, its tasks as sub-issues of a workstream, each moved through Todo, In
+  Progress and Done. It finds the project linked to the repository, or creates and links
+  one on the first effort; `gh` needs the `project` scope (`gh auth refresh -s project`).
+  Future work goes on the board as an issue at Todo, added by the owner or at the owner's
+  request. Turning it on tracks efforts from then on: an open issue joins the board when
+  an effort adopts it or the owner adds it. `no`: no board, and none of that runs; issues are still created and labelled.
 - **Models:** model, effort and speed per role, set in `.claude/settings.json` `env` (a
   machine overrides them in `settings.local.json`; restart Claude Code after changing
   them). Effort is any level the model offers; Codex rejects an unknown one itself.
@@ -43,7 +51,8 @@ PRs open as drafts and stay drafts until the review loop is done; CI skips draft
 runs once, when the PR is marked ready.
 
 With auto-merge on and no reviewer, the loop runs from the ask to the deploy with one stop:
-the questions.
+the questions. An ask with UI in it has two more before that, both the designer's: its
+questions, and the pick between its three designs.
 
 ## Commands
 
@@ -61,7 +70,7 @@ the questions.
 
 ## Who does what
 
-Five agents, defined in `.claude/agents/`:
+Six agents, defined in `.claude/agents/`:
 
 - **orchestrator** is the main session (`claude`, the default in `.claude/settings.json`).
   It splits the ask into workstreams, gives each a territory (files no other agent writes),
@@ -71,7 +80,15 @@ Five agents, defined in `.claude/agents/`:
   recommendation first, never a list to answer by typing.
 - **git-manager** does every state-changing git and GitHub operation except architects'
   own commits: the branch, the main session's commits, the archive, push, the PR, review
-  threads, CI, merge, issues. The main session spawns one per effort and sends it jobs.
+  threads, CI, merge, issues, and the project board when the **Project** setting is `yes`.
+  The main session spawns one per effort and sends it jobs. An issue that waits on a person
+  is labelled `blocked-on-product-owner` (a product decision) or `blocked-on-dev-owner` (a
+  code, hosting or architecture decision).
+- **designer** works before the plan on any ask that adds or reshapes something a user
+  sees. It asks questions that narrow the direction, publishes three options as shareable
+  Artifact pages, and writes up the one the owner picks as a spec. It writes only in the
+  effort's `design/` folder, never product code. The main session spawns it and carries its
+  questions and the pick to the owner; `claude --agent designer` runs one alone.
 - **architect** owns the shape of the code in its workstream: it restates the ask,
   reviews, plans, writes every contract, dispatches the other two a phase at a time,
   verifies, and commits its own files. `claude --agent architect` runs one solo as the main
@@ -96,12 +113,12 @@ changed. The full check runs once, at the end.
 ## Voice
 
 Every text block begins with the writer's name: `Orchestrator:`, `Git manager:`,
-`Architect:` (or `Architect billing:` for a workstream), or for a sub-agent the brief it
+`Designer:`, `Architect:` (or `Architect billing:` for a workstream), or for a sub-agent the brief it
 holds — `T-2.3:` or `I-2.3:` for item 3 of phase 2, `T-billing-2.3:` under the
 orchestrator. Before each tool call, one prefixed
 line saying what you're about to do and why — "Architect: reading the drift gate in
 `ci.yml` to see which paths it inspects." Not what you did; the result says that. The owner
-should be able to follow a transcript with five agents in it and never wonder why a command
+should be able to follow a transcript with six agents in it and never wonder why a command
 is running.
 
 ## Rule zero
@@ -126,9 +143,9 @@ of the work.
 
 ## Code
 
-The `code-standards` skill is the rulebook and is preloaded into every agent. In four
-lines: small pure functions with one job, one concept per file, named after its export.
-Every named function is a contract the architect wrote first. Failures are `Result`
+The `code-standards` skill is the rulebook and is preloaded into every agent that plans or
+writes code. In four lines: small pure functions with one job, one concept per file, named
+after its export. Every named function is a contract the architect wrote first. Failures are `Result`
 values, never exceptions. I/O lives in `shell/` behind explicit deps so `core/` can be
 tested by calling it.
 
@@ -137,8 +154,11 @@ tested by calling it.
 - **This file** is workspace instructions and nothing else. It is never a ledger: no open
   work, no decisions log, no status, no history. Don't add to it during a contribution.
 - **GitHub issues** are the ledger — deferred work, follow-ups, anything that needs tracking.
+  With the **Project** setting at `yes`, the repository's GitHub Project is the view over
+  them: what is in flight, what is Todo, and what waits on whom.
 - **`CONTRIBUTING.md`** holds the repo's gotchas and conventions, in whatever form the repo
   chooses. Read it if it exists; don't create it unasked.
-- **`contributions/`** holds the review and plan for each piece of work, found by its slug.
+- **`contributions/`** holds the review and plan for each piece of work, found by its slug,
+  and its `design/` folder when a designer worked on it.
 - **`.claude/agent-memory/architect/`** is the architect's own notes on the codebase:
   where things live, generalisations already made, gotchas. Not status, not decisions.

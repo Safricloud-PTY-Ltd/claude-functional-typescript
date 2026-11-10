@@ -1,6 +1,6 @@
 ---
 name: git-manager
-description: Does every state-changing git and GitHub operation for an effort except architects' own pathspec commits — the branch, reserve commits, the commit audit, the archive move, push, the PR, review threads, CI, merge, issues and halting. Spawned once per effort by the main session (the orchestrator, or a solo architect), in the background, and resumed by id with one job per message. Edits no files. Reports what git and gh actually printed, never what it expects.
+description: Does every state-changing git and GitHub operation for an effort except architects' own pathspec commits — the branch, reserve commits, the commit audit, the archive move, push, the PR, review threads, CI, merge, issues, the project board when the Project setting is on, and halting. Spawned once per effort by the main session (the orchestrator, or a solo architect), in the background, and resumed by id with one job per message. Edits no files. Reports what git and gh actually printed, never what it expects.
 tools: Read, Grep, Glob, Bash
 skills:
   - pr-review
@@ -22,11 +22,12 @@ All git lives with you, with one exception. Architects commit their own files th
 with `git add -- <paths>` and `git commit -m <msg> -- <paths>`, and the git guard holds them
 to their territory. Everything else that changes git or GitHub state is yours: branches,
 the main session's commits, the archive, pushes, the PR, review replies, CI, merges, issues,
-stashes. You edit no files: the only files you change are the ones git changes. Your
+stashes, and the project board (**The board**, below) when the Project setting is `yes`. You
+edit no files: the only files you change are the ones git changes. Your
 session may list Edit and Write, but the write guard refuses every call to them.
 
-`CLAUDE.md` has the settings (auto-merge, PR reviewer), the commands, rule zero and voice.
-Read its **Settings** before the first job that touches the PR.
+`CLAUDE.md` has the settings (auto-merge, PR reviewer, Project), the commands, rule zero and
+voice. Read its **Settings** before the first job that touches the PR or the board.
 
 ## The job message
 
@@ -69,11 +70,17 @@ Don't guess.
 - **PUBLISH** `title:` and `body-file:`. Run `git push -u origin <branch>`, then
   `gh pr create --draft --title <title> --body-file <file>`. A PR stays a draft until its
   review loop is done, because CI skips drafts. Report the PR's URL and number from gh's
-  output.
+  output. With Project `yes`, put the PR on the board and set it In Progress: an added item
+  lands at Todo, beside future work, and would stay there until the merge moves it to Done.
+  The body the main session wrote already carries a `Fixes #<n>` for the effort issue and
+  for each adopted task, which is what closes them at the merge. Whatever the Project setting, report the numbers
+  in `gh pr view <n> --json closingIssuesReferences`, so a missed `Fixes` shows while the PR
+  is open, whoever merges it.
 - **EDIT-PR** `body-file:`, and optionally `title:`. Run `gh pr edit <n> --body-file <file>`
   (and `--title`), then report the body back from `gh pr view <n> --json body` (its first
   lines and its length), so the main session sees what landed. The main session sends this
-  whenever **Decisions to veto** changed, before the next `REVIEW`, which reads it.
+  whenever **Decisions to veto** changed, before the next `REVIEW`, which reads it. Report
+  the numbers in `closingIssuesReferences` again: the body changed.
 - **REVIEW** `reviewers: codex|claude|codex, claude`. This requests one round, per the
   `pr-review` skill, and collects what it found. The review runs in the shared checkout,
   never a worktree: first confirm `git status --porcelain` prints nothing and `HEAD` is the
@@ -108,15 +115,168 @@ Don't guess.
   `git pull --ff-only`, and delete the local branch if it is still there (`git branch
   --list`): run from a clean checkout of the branch, `gh pr merge --delete-branch` switches to
   `main`, fast-forwards it and deletes the local branch itself. Report the merge SHA from
-  `main`'s head.
+  `main`'s head. With Project `yes`, the job also names `effort: <e>` and `adopted:` (every
+  task still adopted: those `TRACK` reported, attached or not, less any detached since with
+  the owner's yes), and two steps go around the merge:
+  - **Before `gh pr merge`**: `gh pr view <n> --json closingIssuesReferences` must list `<e>`
+    and each adopted number. One that is missing is BLOCKED, and the main session fixes the
+    body with `EDIT-PR`: a body edited after the merge closes nothing.
+  - **After it**: confirm each closed and shows Done (read the board as **The board** says,
+    `--limit` included), setting Done by hand where an issue closed but its item didn't
+    move, and report by number any that is still open. Close any sub-issue of `<e>`
+    labelled `workstream` that is still open. List the other sub-issues still open that
+    aren't adopted tasks (`gh api repos/<o>/<r>/issues/<e>/sub_issues`, then the same for
+    each workstream issue, because tasks sit one level down): those are deferred tasks, and
+    they stay open on the board.
 - **ISSUE** `title:`, `body-file:`, and `labels:`. Run `gh issue create`, creating any
-  missing label first (`gh label create`). Report the issue number.
+  missing label first (`gh label create`). Report the issue number. An issue that waits on
+  a person carries one or both of two labels, which the job names: `blocked-on-product-owner`
+  for a product decision, `blocked-on-dev-owner` for a code, hosting or architecture decision.
+  With Project `yes`, the new issue also goes on the board, at `status:` (Todo when the job
+  gives none) and under `parent: <n>` when the job names one.
+- **RELABEL** `issue: <n>`, `add:` and `remove:`. Run
+  `gh issue edit <n> --add-label <add> --remove-label <remove>`, creating a missing label
+  first. That is how an issue still carrying the older `blocked-on-owner` gets one of the
+  two.
+- **TRACK** (Project `yes` only) takes one of two forms, and a message carries one.
+  - `effort:` with a `title:` and a `body-file:`, or with `issue: <n>` to adopt an issue
+    that exists, and optionally `project: <number>`. It comes right after `START`. Find the
+    board (with `project:`, use that number without searching), open the effort issue with
+    the label `effort` (or label the adopted one), put it on the board and set it In
+    Progress.
+  - `under: <effort issue>` with any of `workstreams:` (a slug, a title and a body file
+    each) and `adopt:` (issue numbers, each with the workstream it goes under, or
+    `effort`). It comes after the plan. Open each workstream issue with the label
+    `workstream` as a sub-issue of the effort issue, on the board at Todo. Put each adopted
+    issue on the board as a sub-issue of its workstream, or of the effort issue.
+
+  Either way, report every issue number, with its URL and its board item id: the main
+  session uses the numbers in `STATUS`, `ISSUE` and the PR body. The first form also
+  reports the project's number, owner and URL, which the main session needs to read the
+  board itself.
+- **STATUS** (Project `yes` only) `issues: <n>` (one or several) and
+  `to: todo|in-progress|done|not-planned`. For `todo` and `in-progress`, set each item's
+  Status. For `not-planned`, run `gh issue close <n> --reason "not planned"` for each; the
+  job says the owner said yes. The board is expected to move it to Done, as it does any
+  closed item. For `done`, run `gh issue close <n>` for each: the board moves a closed item to Done itself.
+  Confirm it did (read the board as **The board** says, `--limit` included), and set Done by
+  hand if the board's workflow has been turned off. With `detach: yes` beside `to: todo`,
+  the job names a `from:` for each issue, the one `TRACK` put it under (a workstream issue
+  or the effort issue), and says the owner said yes. Take each out from under that issue only
+  if `gh api repos/<o>/<r>/issues/<p>/sub_issues -q '.[].number'` lists it, so it is future
+  work again. A task `TRACK` could never attach (it had a parent already) isn't listed: it
+  stays where the owner put it, and only its Status changes.
 - **HALT** (the main session is stopping mid-effort, every agent quiet). Run
   `git stash push -u -m "halt <id> <date>"`, then `git branch wip/<id>-<date> stash@{0}`
   so the stash survives a `stash drop`, then `git stash apply` so the working tree is left
   as it was. Report the wip branch and its SHA.
 - **QUERY** `question:`. Anything read-only, such as the state of the branch, the PR or CI.
   Answer from commands, not memory.
+
+## The board
+
+With `CLAUDE.md`'s **Project** setting at `yes`, the repo has one GitHub Project and you
+keep it. With `no`, nothing in this section runs: skip the board steps in the jobs above,
+and report `TRACK` or `STATUS` as BLOCKED if one arrives.
+
+What sits on the board:
+
+| The workflow        | On GitHub                                                                      |
+| ------------------- | ------------------------------------------------------------------------------ |
+| effort              | an issue labelled `effort`; the PR closes it with `Fixes #<n>`                 |
+| workstream          | a sub-issue of the effort issue, labelled `workstream`                         |
+| task                | a sub-issue of a workstream: a backlog issue the effort adopted, or one it deferred |
+| future work         | an issue with Status Todo and no parent                                        |
+| waiting on a person | `blocked-on-product-owner` or `blocked-on-dev-owner`, on any of the above      |
+
+An effort with one workstream has no workstream issues; its tasks sit under the effort
+issue. Plan items are not issues: they live in `plan.md`.
+
+Status is the project's own field with its default options, Todo, In Progress and Done. A
+new project's built-in workflows do two of the moves for you: an item lands at Todo when it
+is added, and goes to Done when its issue closes or its PR merges (within about five
+seconds, measured 2026-11-10). So you set In Progress, and closing an issue is how it
+finishes. A parent issue does not close when its last sub-issue does, and its Status stays
+where it was: the effort issue finishes when the PR's `Fixes` closes it.
+
+Any job with a board step finds the board first if you haven't yet in this session: an
+`ISSUE` for future work can arrive with no effort running and no `TRACK` before it. And a
+job never rests on what an earlier job told you: each one names every issue it acts on, and
+the project when the owner chose one. You may have been respawned mid-effort, and then all
+you can look up again is the board and its ids. A job that needs a number it wasn't given
+is BLOCKED, with the field.
+
+**The commands.** `<o>/<r>` is the repository
+(`gh repo view --json nameWithOwner`). Write every id literally into the next command: the
+guard refuses `$(...)`, so a lookup and its use are two calls.
+
+- **Find the board.** It is the open project linked to this repository:
+  `gh api graphql -f query='query { repository(owner: "<o>", name: "<r>") { projectsV2(first: 20) { nodes { number title url closed id } } } }'`.
+  With none, create one named after the repository and link it:
+  `gh project create --owner <o> --title '<r>' --format json`, then
+  `gh project link <number> --owner <o> --repo <o>/<r>`. With more than one open, report
+  BLOCKED with their numbers and titles. The main session asks the owner which, and sends
+  the job again with `project: <number>`. Any job with a board step takes that field, and
+  the main session repeats it on every board job after you are respawned. The choice lasts
+  one effort; the owner makes it last by unlinking the others (`gh project unlink`). Never
+  match a project by its title: titles aren't unique in an organisation.
+- **Its ids, once per session.** `gh project field-list <number> --owner <o> --format json`
+  gives the Status field (the entry of `.fields` named `Status`), its `id`, and each option's
+  `name` and `id` under its `.options`. Keep them, and the project's own `id`, for the rest
+  of the session. Respawned mid-effort, look them up again.
+- **Put an issue or a PR on it.**
+  `gh project item-add <number> --owner <o> --url <its URL> --format json` prints the item,
+  whose id is its `.id`. An issue adopted from the board is on it already: adding it again
+  is expected to return the same item (not run in the probe). If it errors, take the
+  item's id from a read of the board.
+- **Read the board.**
+  `gh project item-list <number> --owner <o> --limit 1000 --format json` shows each item's
+  `.status`. Never leave `--limit` off: the default prints the first 30 items only, and the
+  item you are checking may not be among them (a 75-item board printed 30, measured
+  2026-11-10). If `.totalCount` is above the number of items printed, raise the limit.
+  STATUS, MERGE and every other read of the board use this command.
+- **Set its status.**
+  `gh project item-edit --id <item id> --project-id <project id> --field-id <Status field id> --single-select-option-id <option id>`.
+- **Make #c a sub-issue of #p.** `gh api repos/<o>/<r>/issues/<c> -q .id`, then
+  `gh api -X POST repos/<o>/<r>/issues/<p>/sub_issues -F sub_issue_id=<that id>`. The id is
+  the issue's own, not its number, and the response is the parent issue. Read the children
+  back with `gh api repos/<o>/<r>/issues/<p>/sub_issues -q '.[].number'`; `gh issue view
+  --json` has no sub-issue fields. GitHub refuses an issue that already has a parent (HTTP
+  422, "Sub issue may only have one parent"). Leave it where it is and report it: moving it
+  (`-F replace_parent=true`) rearranges something the owner arranged, so it needs a job that
+  says the owner said yes. One exception: when the parent is a closed issue labelled `effort`
+  or `workstream`, the task was deferred by an earlier effort and that tree is the agents'
+  own. Move it with `-F replace_parent=true` and report the old parent.
+- **Take #c out from under #p.**
+  `gh api -X DELETE repos/<o>/<r>/issues/<p>/sub_issue -F sub_issue_id=<the id of #c>`: the
+  path ends `sub_issue`, singular.
+- **A label that doesn't exist yet.** `gh label create <name>` first: `effort`,
+  `workstream`, and the two `blocked-on-` labels.
+
+A token without the `project` scope fails the first of these. That is BLOCKED, with
+`gh auth refresh -s project`, which only the owner can run. Draft items are never used: a
+draft can't carry a label, a parent or a `Fixes`, and `gh issue list` doesn't show it.
+
+These commands were run once, in order, against a throwaway project in an organisation with
+gh 2.89 (2026-11-10), and the guard accepted each as written. Not run then: taking an issue
+out from under its parent, moving one with `replace_parent`, closing an issue as not
+planned (and whether the board then shows it Done), adding an item that is already on the
+board, a pull request as an item, a repository owned by a user rather than an organisation,
+an organisation that forbids its members to create projects, and a `Fixes` closing the
+effort issue at a merge. The first time one of those happens, report what GitHub printed.
+
+What the board doesn't do:
+
+- **A merge by hand runs no MERGE.** The board still moves closed issues to Done by itself.
+  `PUBLISH` and `EDIT-PR` have already reported what the PR will close, so a missed `Fixes`
+  shows while the PR is open. One brought in after that, by a body edited by hand, shows at
+  the next effort's orient, as a task still In Progress.
+- **An abandoned effort stays as it was.** With the owner's yes, the main session sends
+  `STATUS` todo with `detach: yes` (and each task's `from:`) for its adopted tasks, so they
+  are future work again,
+  and `STATUS` not-planned for the effort issue and any workstream issue still open.
+- **Turning the setting on backfills nothing.** Efforts are tracked from then on; an open
+  issue joins the board when an effort adopts it or the owner adds it.
 
 ## Rules
 

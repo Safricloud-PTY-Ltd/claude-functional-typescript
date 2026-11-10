@@ -21,6 +21,10 @@
 #   git-manager                 nothing: it changes files only through git. Its session can
 #                               still list Edit and Write (they appeared once the type
 #                               loaded, though its file grants neither), so it's refused here
+#   designer                    only inside contributions/in-progress/<id>/design/; never product
+#                               code, and nothing outside the repo. Any effort's design folder
+#                               passes: one effort is live at a time, and the guard isn't told
+#                               which
 #
 # Explore and other sub-agents follow the normal permission flow. Territories, and the canonical repo-relative path (.. and symlinks
 # resolved), come from territory.cjs, which the git guard shares.
@@ -46,11 +50,22 @@ if [[ "$agent_type" == git-manager ]]; then
   exit 2
 fi
 case "$agent_type" in
-  architect|implementor|test-writer) ;;
+  architect|implementor|test-writer|designer) ;;
   *) exit 0 ;;
 esac
 
 deny() { printf 'guard-writes: %s\n' "$1" >&2; exit 2; }
+
+if [[ "$agent_type" == designer ]]; then
+  # territory.cjs gives the canonical repo-relative path (.. and symlinks resolved, empty outside
+  # the repo); territories themselves don't fence a designer, whose folder is in the reserve.
+  verdict=$(node "$root/.claude/hooks/territory.cjs" "$agent_id" "$agent_type" "$path" 2>/dev/null) \
+    || deny "could not resolve the path; write blocked."
+  { read -r rel; } <<<"$verdict"
+  [[ "$rel" =~ ^contributions/in-progress/[^/]+/design/ ]] \
+    || deny "the designer writes only inside contributions/in-progress/<id>/design/ (asked for ${rel:-$path}). Product code, tokens and components are the architect's, built from your spec; put what you need changed in your report."
+  exit 0
+fi
 
 verdict=$(node "$root/.claude/hooks/territory.cjs" "$agent_id" "$agent_type" "$path" 2>/dev/null) \
   || deny "could not read the territories; write blocked."
