@@ -157,7 +157,9 @@ first.
 - **Architects never talk to it.** They commit their own paths. Anything else they need
   from git comes to you as a NEEDS report, and you decide whether it becomes a job.
 - **If it stops** (a rate limit, a restart), resume it by id. If it can't be resumed, spawn
-  a new one and send `QUERY` for the branch, head and PR before the next job.
+  a new one and send `QUERY` for the branch, head and PR before the next job. With Project
+  `yes`, every later board job still names its issues and, if the owner chose one,
+  `project:` (**The board**): the new one remembers nothing of the old one's jobs.
 
 ## The designer
 
@@ -204,7 +206,10 @@ the repo. Its file's **The board** has the objects and the commands. You tell it
 - **While you orient**: read the board's Todo items along with the open issues
   (`gh project item-list <number> --owner <o> --limit 1000 --format json`; without `--limit`
   it prints 30 items and no more), and name in the review the ones this effort should
-  adopt.
+  adopt. Name too every item still In Progress except this effort's own issue: one effort
+  is live at a time, so each is left over from an earlier one (a missed `Fixes` after a
+  merge by hand, or an abandoned effort) or is the owner's own work, and the owner decides
+  what happens to it.
 - **After the plan**: `TRACK` with `under:` the effort issue, one entry per workstream (a
   title, and a body file with its territory, wave and plan path) and the issues to adopt,
   each under its workstream. An effort with one workstream sends only the adoptions, under
@@ -226,8 +231,14 @@ the repo. Its file's **The board** has the objects and the commands. You tell it
 - **When a board job is BLOCKED on more than one linked project**: ask the owner which, and
   send it again with `project: <number>`. Repeat that field on every board job if the git
   manager is respawned.
-- **An abandoned effort**: with the owner's yes, `STATUS` todo for its adopted tasks, and a
-  job to close the effort issue as not planned.
+- **At `MERGE`**: send `effort: <n>` and `adopted:` with every task still adopted (every one
+  `TRACK` reported, less any detached with the owner's yes). You keep those numbers; the git
+  manager may have been respawned since `TRACK`. It checks before merging that the PR will
+  close each one, and reports BLOCKED if the body misses one: fix the body with `EDIT-PR`
+  and send `MERGE` again.
+- **An abandoned effort**: with the owner's yes, `STATUS` todo with `detach: yes` for its
+  adopted tasks, and `STATUS` not-planned for the effort issue and any workstream issue
+  still open.
 - **An issue still labelled `blocked-on-owner`**, from before the two labels: `RELABEL` it to
   the one that fits when you meet it. This one works with the setting at `no` too.
 

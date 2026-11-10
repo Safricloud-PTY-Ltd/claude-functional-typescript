@@ -112,16 +112,18 @@ Don't guess.
   `git pull --ff-only`, and delete the local branch if it is still there (`git branch
   --list`): run from a clean checkout of the branch, `gh pr merge --delete-branch` switches to
   `main`, fast-forwards it and deletes the local branch itself. Report the merge SHA from
-  `main`'s head. With Project `yes`, confirm the effort issue and every task the effort
-  adopted (the numbers `TRACK` reported, whether or not each could be attached) closed and
-  show Done (read the board as **The board** says, `--limit` included), setting Done by hand
-  where an issue closed but its item didn't move. An adopted task still open is a missed
-  `Fixes`: report it by number and leave it open, for the main session to decide. Close any
-  sub-issue of the effort issue labelled `workstream` that is still open. List the other
-  sub-issues still open that aren't adopted tasks
-  (`gh api repos/<o>/<r>/issues/<n>/sub_issues`, then the same for each workstream issue,
-  because tasks sit one level down): those are deferred tasks, and they stay open on the
-  board.
+  `main`'s head. With Project `yes`, the job also names `effort: <n>` and `adopted:` (every
+  task still adopted: those `TRACK` reported, attached or not, less any detached since with
+  the owner's yes). Before the merge, check that the PR will close them:
+  `gh pr view <n> --json closingIssuesReferences` must list each of those numbers. One that
+  is missing is BLOCKED, and the main session fixes the body with `EDIT-PR`: a body edited
+  after the merge closes nothing. After the merge, confirm each closed and shows Done (read
+  the board as **The board** says, `--limit` included), setting Done by hand where an issue
+  closed but its item didn't move, and report by number any that is still open. Close any sub-issue of the effort issue labelled
+  `workstream` that is still open. List the other sub-issues still open that aren't adopted
+  tasks (`gh api repos/<o>/<r>/issues/<n>/sub_issues`, then the same for each workstream
+  issue, because tasks sit one level down): those are deferred tasks, and they stay open on
+  the board.
 - **ISSUE** `title:`, `body-file:`, and `labels:`. Run `gh issue create`, creating any
   missing label first (`gh label create`). Report the issue number. An issue that waits on
   a person carries one or both of two labels, which the job names: `blocked-on-product-owner`
@@ -149,12 +151,15 @@ Don't guess.
   reports the project's number, owner and URL, which the main session needs to read the
   board itself.
 - **STATUS** (Project `yes` only) `issues: <n>` (one or several) and
-  `to: todo|in-progress|done`. For `todo` and `in-progress`, set each item's Status. For
-  `done`, run `gh issue close <n>` for each: the board moves a closed item to Done itself.
+  `to: todo|in-progress|done|not-planned`. For `todo` and `in-progress`, set each item's
+  Status. For `not-planned`, run `gh issue close <n> --reason "not planned"` for each; the
+  job says the owner said yes. The board moves any closed item to Done, this one included. For `done`, run `gh issue close <n>` for each: the board moves a closed item to Done itself.
   Confirm it did (read the board as **The board** says, `--limit` included), and set Done by
   hand if the board's workflow has been turned off. With `detach: yes` beside `to: todo`,
   also take the issue out from under its parent, so it is future work again; the job says
-  the owner said yes.
+  the owner said yes. Detach only from a parent this effort gave it, a workstream issue or
+  the effort issue. A task this effort could never attach (it had a parent already) stays
+  where the owner put it, and only its Status changes.
 - **HALT** (the main session is stopping mid-effort, every agent quiet). Run
   `git stash push -u -m "halt <id> <date>"`, then `git branch wip/<id>-<date> stash@{0}`
   so the stash survives a `stash drop`, then `git stash apply` so the working tree is left
@@ -189,7 +194,11 @@ finishes. A parent issue does not close when its last sub-issue does, and its St
 where it was: the effort issue finishes when the PR's `Fixes` closes it.
 
 Any job with a board step finds the board first if you haven't yet in this session: an
-`ISSUE` for future work can arrive with no effort running and no `TRACK` before it.
+`ISSUE` for future work can arrive with no effort running and no `TRACK` before it. And a
+job never rests on what an earlier job told you: each one names every issue it acts on, and
+the project when the owner chose one. You may have been respawned mid-effort, and then all
+you can look up again is the board and its ids. A job that needs a number it wasn't given
+is BLOCKED, with the field.
 
 **The commands.** `<o>/<r>` is the repository
 (`gh repo view --json nameWithOwner`). Write every id literally into the next command: the
@@ -256,8 +265,8 @@ What the board doesn't do:
   but nobody reports a missed `Fixes`. It shows at the next effort's orient, as a task still
   In Progress.
 - **An abandoned effort stays as it was.** With the owner's yes, the main session sends
-  `STATUS` todo for its adopted tasks and a job to close the effort issue as not planned
-  (`gh issue close <n> --reason "not planned"`).
+  `STATUS` todo with `detach: yes` for its adopted tasks, so they are future work again,
+  and `STATUS` not-planned for the effort issue and any workstream issue still open.
 - **Turning the setting on backfills nothing.** Efforts are tracked from then on; an open
   issue joins the board when an effort adopts it or the owner adds it.
 

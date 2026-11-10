@@ -329,7 +329,9 @@ operation for the contribution except your own commits. Its jobs and report are 
   when the ask is one existing issue; that is the effort issue. Its report gives the
   project's number. Name in the review any Todo item on the board the contribution should
   adopt (read it with `gh project item-list <number> --owner <o> --limit 1000 --format json`;
-  without `--limit` it prints 30 items and no more), and send those in a second `TRACK`
+  without `--limit` it prints 30 items and no more), and name too every item still In
+  Progress except your effort issue: each is left over from an earlier effort or is the
+  owner's own work, and the owner decides what happens to it. Send the adoptions in a second `TRACK`
   with `under: <effort issue>`, each adopted under `effort`: a solo contribution has no
   workstream issues. Send `STATUS` in-progress for them when the loop starts. Every adopted
   task is finished; one the loop shows is out of scope goes back only with the owner's yes
@@ -337,7 +339,9 @@ operation for the contribution except your own commits. Its jobs and report are 
   and one for each adopted task you completed, each with its own keyword
   (`Fixes #12, fixes #14`). If a board job is BLOCKED on more than one linked project, ask
   the owner which and send it again with `project: <number>`. A deferred item's `ISSUE` job
-  names the effort issue as its `parent:`.
+  names the effort issue as its `parent:`. `MERGE` carries `effort: <n>` and `adopted:` with
+  every task still adopted: you keep those numbers, because the git manager may have been
+  respawned since `TRACK`.
 
 ## The designer
 
