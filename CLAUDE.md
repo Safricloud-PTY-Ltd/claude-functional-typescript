@@ -30,7 +30,8 @@ drizzle), and the default branch.>
   Progress and Done. It finds the project linked to the repository, or creates and links
   one on the first effort; `gh` needs the `project` scope (`gh auth refresh -s project`).
   Future work goes on the board as an issue at Todo, added by the owner or at the owner's
-  request. `no`: no board, and none of that runs; issues are still created and labelled.
+  request. Turning it on tracks efforts from then on: an open issue joins the board when
+  an effort adopts it or the owner adds it. `no`: no board, and none of that runs; issues are still created and labelled.
 - **Models:** model, effort and speed per role, set in `.claude/settings.json` `env` (a
   machine overrides them in `settings.local.json`; restart Claude Code after changing
   them). Effort is any level the model offers; Codex rejects an unknown one itself.

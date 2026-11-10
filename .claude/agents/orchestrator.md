@@ -220,8 +220,14 @@ the repo. Its file's **The board** has the objects and the commands. You tell it
   from under the workstream and it is future work again. The PR body says so.
 - **A deferred item**: `ISSUE` with its `blocked-on-` label, and `parent:` the workstream
   (or the effort) it came from.
-- **The PR body** ends with `Fixes #<n>` for the effort issue and for each adopted task the
-  effort completed.
+- **The PR body** ends with one `Fixes #<n>` for the effort issue and one for each adopted
+  task the effort completed, each with its own keyword: `Fixes #12, fixes #14`. GitHub wants
+  the full syntax per issue, so `Fixes #12, #14` is not relied on to close #14.
+- **When a board job is BLOCKED on more than one linked project**: ask the owner which, and
+  send it again with `project: <number>`. Repeat that field on every board job if the git
+  manager is respawned.
+- **An abandoned effort**: with the owner's yes, `STATUS` todo for its adopted tasks, and a
+  job to close the effort issue as not planned.
 - **An issue still labelled `blocked-on-owner`**, from before the two labels: `RELABEL` it to
   the one that fits when you meet it. This one works with the setting at `no` too.
 
