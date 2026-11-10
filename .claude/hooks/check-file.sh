@@ -10,7 +10,10 @@
 #               `related`: through barrels everything is related, and siblings' red stubs
 #               drown the report; the architect runs related once per phase. Skipped for
 #               stubs (red by design), barrels and types.ts, and for the test-writer (its
-#               tests are meant to be red; it runs them itself).
+#               tests are meant to be red; it runs them itself). Skipped too for a slow or
+#               perf test (<base>.slow.test.ts(x), <base>.perf.test.ts(x)): the normal run
+#               excludes them, and each is run by file in its own mode only when a brief
+#               names that command, never on every edit.
 #
 # Each tool runs from node_modules/.bin when it's there, else through pnpm exec. Not a policy
 # hook, so it fails open: on unparseable input, and without node_modules/.bin (said once per
@@ -45,8 +48,10 @@ fi
 # Repo-relative with forward slashes, which is how tsgo and eslint print paths. Normalising the
 # slashes alone isn't enough on Windows: file_path and CLAUDE_PROJECT_DIR can differ in
 # drive-letter case, or in /c/... against C:/... spelling, and then a prefix strip matches
-# nothing and the typecheck filter below hides every error.
-rel=$(node -e 'const p = require("node:path"); process.stdout.write(p.relative(process.cwd(), p.resolve(process.argv[1])).split(p.sep).join("/"))' "$path") || exit 0
+# nothing and the typecheck filter below hides every error. realpath, because the two can also
+# differ in a Windows short name (C:\Users\SOMEON~1 against C:\Users\Some One): node reports the
+# cwd in the long form whatever was passed to cd, and the relative path then climbs out of the repo.
+rel=$(node -e 'const p = require("node:path"); const real = require("node:fs").realpathSync.native; process.stdout.write(p.relative(real(process.cwd()), real(p.resolve(process.argv[1]))).split(p.sep).join("/"))' "$path") || exit 0
 
 report=""
 failed=0
@@ -68,6 +73,8 @@ fi
 # 3. Tests
 tests=()
 case "$rel" in
+  # Ahead of the *.test.ts arm: in the normal mode vitest finds no test file here and exits 1.
+  *.slow.test.ts|*.slow.test.tsx|*.perf.test.ts|*.perf.test.tsx) ;;
   *.test.ts|*.test-d.ts|*.test.tsx|*.test-d.tsx) tests=(run "$rel") ;;
   */index.ts|*/types.ts) ;;
   *) base="${rel%.*}"

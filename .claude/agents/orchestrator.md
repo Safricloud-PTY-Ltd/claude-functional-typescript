@@ -82,7 +82,9 @@ subfolder per workstream, `<id>/<workstream>/`, with that architect's `review.md
 6. **Waves.** Run them in order, as **Running a wave** describes.
 7. **Final pass.** Once every architect has reported DONE, run `pnpm check` on the whole
    branch. It's the first moment no stubs remain anywhere, and the first time
-   dependency-cruiser and knip see every domain finished. Read the full diff. Send the git
+   dependency-cruiser and knip see every domain finished. Don't run `pnpm coverage`,
+   `pnpm test:slow` or `pnpm perf` here: CI runs the slow suite inside its coverage step, and
+   perf runs only when the owner asks. Read the full diff. Send the git
    manager `AUDIT` and check that each architect's commits stay inside its territory. If
    the change touches UI, look at it.
 8. **Archive.** Send `ARCHIVE`. That's the last commit that touches `contributions/`.
@@ -363,7 +365,8 @@ findings).
   first domain it names.
 - **Replies claim only what was measured.** The reviewer checks replies against the code.
   Two replies that said "fixed" (a regex, a depth gate) were disproved the next round. A
-  performance fix is proved with a family of growing adversarial inputs, not one input.
+  performance fix is proved with a family of growing adversarial inputs, not one input, kept
+  as a perf test (`<fn>.perf.test.ts`) and run by file.
 - **Point review at safety-critical code first.** The mutation tripwire let any `POST`
   marked as a mutation through, and nobody read it until round 4.
 - **When coverage falls with no test missing,** suspect a second copy of a module loaded

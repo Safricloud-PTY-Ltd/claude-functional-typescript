@@ -117,6 +117,11 @@ version:
 - No `let`, no classes, no loops, no mutation, no `any`, no `null`, no default exports.
 - Cross-domain imports go through a domain barrel via `#<domain>` subpath imports, so a
   domain's internals are unreachable from outside it.
+- Tests come in three suites, told apart by file name. The normal suite (`*.test.ts`) runs in
+  `pnpm check`, the pre-push hook and CI. Tests that wait on the real clock or need a raised
+  timeout are slow tests (`*.slow.test.ts`), which only CI runs. Tests that assert on elapsed
+  time or growth are perf tests (`*.perf.test.ts`), which run by hand only, so a test that
+  depends on the machine can never refuse a push.
 
 Every one of those is enforced by a tool — TypeScript, ESLint, dependency-cruiser, knip, or
 Vitest — not by review. The [project-scaffold](.claude/skills/project-scaffold/SKILL.md)
@@ -139,6 +144,10 @@ project. Two things follow from that:
   (and this repo's) says `"type": "module"`; as a `.js` file it would load as ESM, `require`
   would be undefined, and every guard would fail closed, blocking all git and all sub-agent
   writes.
+- **The hooks, the Codex runner and the asset vitest configs have tests, run with node's own
+  runner**: `node --test .claude/hooks/*.test.cjs .claude/skills/*/*.test.cjs`. Two of them
+  spawn `bash`, so run them from the shell the hooks use. On Windows that is Git Bash: from
+  PowerShell, `bash` can resolve to WSL's.
 
 To test a change to the command before it is on `main`, install from the branch:
 

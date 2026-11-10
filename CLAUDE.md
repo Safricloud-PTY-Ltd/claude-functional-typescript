@@ -49,6 +49,12 @@ the questions.
 
 - Install: `pnpm install`
 - Check (format + lint + typecheck + unit + dependency rules + dead code): `pnpm check`
+- Coverage (the normal and slow test suites, with thresholds; CI runs it after the check):
+  `pnpm coverage`
+- Slow tests (`*.slow.test.ts(x)`: they wait on the real clock or need a raised timeout; CI
+  runs them inside coverage, never `pnpm check` or the pre-push hook): `pnpm test:slow`
+- Perf tests (`*.perf.test.ts(x)`: they assert on elapsed time or growth; by hand only, never
+  check, pre-push or CI): `pnpm perf`
 - Build: `pnpm build`
 - E2E: `pnpm e2e`
 - Deploy: `<how it deploys, and how to see whether it worked>`

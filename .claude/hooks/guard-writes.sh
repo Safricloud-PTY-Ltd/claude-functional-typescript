@@ -7,7 +7,9 @@
 #                               its territory registers with a `scratch <path>` line
 #   test-writer                 only *.test.ts(x) / *.test-d.ts(x) under packages/<pkg>/src/ (or
 #                               src/ in a repo bootstrapped before the workspace layout), beside
-#                               an existing contract (<base>.ts or <base>.tsx)
+#                               an existing contract (<base>.ts or <base>.tsx); a slow or perf
+#                               test (<base>.slow.test.ts, <base>.perf.test.ts) sits beside the
+#                               same contract
 #   implementor                 only existing files under packages/<pkg>/src/ (or src/, as above)
 #                               that carry an @stub marker, or a file it already holds; never
 #                               tests, never new files
@@ -68,8 +70,10 @@ case "$rel" in *.test.ts|*.test-d.ts|*.test.tsx|*.test-d.tsx) is_test=1 ;; esac
 if [[ "$agent_type" == test-writer ]]; then
   (( is_test )) || deny "test-writer writes only *.test.ts(x) and *.test-d.ts(x) files (asked for $rel)."
   # The contract sits beside the test as <base>.ts or <base>.tsx: a .tsx test may cover a .ts
-  # contract (a hook tested with JSX) or a .tsx one (a component). Strip the test suffix in steps.
+  # contract (a hook tested with JSX) or a .tsx one (a component). Strip the test suffix in steps,
+  # then the suite: lineTotal.slow.test.ts and lineTotal.perf.test.ts test lineTotal.ts.
   base="${rel%x}"; base="${base%.ts}"; base="${base%.test-d}"; base="${base%.test}"
+  base="${base%.slow}"; base="${base%.perf}"
   [[ -f "$root/$base.ts" || -f "$root/$base.tsx" ]] || deny "no contract at $base.ts or $base.tsx for $rel. Tests go beside an existing contract; report CLARIFY if the brief points elsewhere."
 else
   (( is_test )) && deny "implementor does not edit tests (asked for $rel). A test that contradicts the contract is a BLOCKED report."

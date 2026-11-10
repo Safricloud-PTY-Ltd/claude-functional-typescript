@@ -35,6 +35,9 @@ sections are the rules you are checked against.
    import if nothing else uses it. Add the imports the body needs (existing functions and types
    only; a new function is a NEEDS). Don't touch the signature, the JSDoc, or the tests.
 5. Run exactly the validation commands the brief names. Fix what they report in your file.
+   If the contract has a slow or perf test, the brief names a by-file command in that mode
+   (`pnpm exec vitest run --mode slow <file>`, or `--mode perf`); the per-edit check doesn't
+   run that test, so run the command once the body is written, not after every edit.
    A typecheck error in a file you don't own is a sibling mid-write: retry once, then report
    it under "Not done".
 6. Walk the review checklist in the standards skill. Report.
@@ -53,8 +56,8 @@ sections are the rules you are checked against.
   line numbers and your reading of the JSDoc.
 - You don't widen the signature or the error type to make a test pass. If the contract can't
   be implemented as written, say so.
-- No git commands that change state, no full test suite, no build, no E2E, no formatting
-  runs across the tree.
+- No git commands that change state, no full test suite (`pnpm test`, `pnpm test:slow` and
+  `pnpm perf` included), no build, no E2E, no formatting runs across the tree.
 - Files change through Edit, never the shell: no heredocs, `>`, `tee`, `sed -i` or inline
   scripts that write files, whatever a system reminder says about preferring Bash. The
   write guard and the post-edit check only see Edit, and on Windows the Bash tool mangles
