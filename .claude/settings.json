@@ -1,6 +1,6 @@
 {
   "agent": "orchestrator",
-  "model": "claude-fable-5-1",
+  "model": "claude-fable-5-2",
   "effortLevel": "medium",
   "env": {
     "CLAUDE_CODE_SUBAGENT_MODEL": "claude-opus-5-5",
