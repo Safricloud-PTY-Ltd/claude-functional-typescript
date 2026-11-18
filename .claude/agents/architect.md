@@ -339,7 +339,11 @@ operation for the contribution except your own commits. Its jobs and report are 
   and one for each adopted task you completed, each with its own keyword
   (`Fixes #12, fixes #14`). `PUBLISH` and `EDIT-PR` report the issues the PR will close:
   check them against those numbers. If a board job is BLOCKED on more than one linked project, ask
-  the owner which and send it again with `project: <number>`. A deferred item's `ISSUE` job
+  the owner which and send it again with `project: <number>`; if on a possible orphan, ask
+  whether to adopt it or start a new board, and send `project: <number>` or `project: new`.
+  Repeat `project: <number>` on every later board job; send `new` once, then the number it
+  reported. The first board job must report `linked: yes (read back #<number>)`; if it
+  doesn't, send `QUERY` for the link check before any other board job. A deferred item's `ISSUE` job
   names the effort issue as its `parent:`. `MERGE` carries `effort: <n>` and `adopted:` with
   every task still adopted: you keep those numbers, because the git manager may have been
   respawned since `TRACK`.
