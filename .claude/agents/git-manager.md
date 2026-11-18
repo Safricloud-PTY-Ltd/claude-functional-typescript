@@ -245,10 +245,10 @@ guard refuses `$(...)`, so a lookup and its use are two calls.
   number (both measured). Then run the link check; if the number isn't in it, link it and
   run the link check again. If that leaves more than one open project linked, say so in the
   report: the next effort's search will be BLOCKED until the owner unlinks the others. With
-  `project: new`, go straight to step 3. Any job with a board step takes the field. `project: new` answers
-  one BLOCKED job only: on every later board job, and after you are respawned, the main
-  session sends `project: <the number that job reported>`, never `new` again. The choice
-  lasts one effort; the owner makes it last by unlinking the others
+  `project: new`, go straight to step 3. Any job with a board step takes the field.
+  `project: new` answers one BLOCKED job only: on every later board job, and after you are
+  respawned, the main session sends `project: <the number that job reported>`, never `new`
+  again. The choice lasts one effort; the owner makes it last by unlinking the others
   (`gh project unlink <number> --owner <o> --repo <o>/<r>`).
 - **Paging.** GraphQL refuses `first` above 100 (`EXCESSIVE_PAGINATION`, measured). When a
   query's `projectsV2` `totalCount` is above the `projectsV2` nodes printed (not the nested
