@@ -140,10 +140,10 @@ Don't guess.
   two.
 - **TRACK** (Project `yes` only) takes one of two forms, and a message carries one.
   - `effort:` with a `title:` and a `body-file:`, or with `issue: <n>` to adopt an issue
-    that exists, and optionally `project: <number>`. It comes right after `START`. Find the
-    board (with `project:`, use that number without searching), open the effort issue with
-    the label `effort` (or label the adopted one), put it on the board and set it In
-    Progress.
+    that exists, and optionally `project: <number>` or `project: new`. It comes right after
+    `START`. Find the board (**The board**: `project:` skips the search, never the link
+    check), open the effort issue with the label `effort` (or label the adopted one), put it
+    on the board and set it In Progress.
   - `under: <effort issue>` with any of `workstreams:` (a slug, a title and a body file
     each) and `adopt:` (issue numbers, each with the workstream it goes under, or
     `effort`). It comes after the plan. Open each workstream issue with the label
@@ -153,7 +153,8 @@ Don't guess.
   Either way, report every issue number, with its URL and its board item id: the main
   session uses the numbers in `STATUS`, `ISSUE` and the PR body. The first form also
   reports the project's number, owner and URL, which the main session needs to read the
-  board itself.
+  board itself. Any job, of any verb, that found, linked or created the board in this
+  session reports `linked: yes (read back #<number>)` from the link check.
 - **STATUS** (Project `yes` only) `issues: <n>` (one or several) and
   `to: todo|in-progress|done|not-planned`. For `todo` and `in-progress`, set each item's
   Status. For `not-planned`, run `gh issue close <n> --reason "not planned"` for each; the
@@ -210,16 +211,61 @@ is BLOCKED, with the field.
 (`gh repo view --json nameWithOwner`). Write every id literally into the next command: the
 guard refuses `$(...)`, so a lookup and its use are two calls.
 
-- **Find the board.** It is the open project linked to this repository:
-  `gh api graphql -f query='query { repository(owner: "<o>", name: "<r>") { projectsV2(first: 20) { nodes { number title url closed id } } } }'`.
-  With none, create one named after the repository and link it:
-  `gh project create --owner <o> --title '<r>' --format json`, then
-  `gh project link <number> --owner <o> --repo <o>/<r>`. With more than one open, report
-  BLOCKED with their numbers and titles. The main session asks the owner which, and sends
-  the job again with `project: <number>`. Any job with a board step takes that field, and
-  the main session repeats it on every board job after you are respawned. The choice lasts
-  one effort; the owner makes it last by unlinking the others (`gh project unlink`). Never
-  match a project by its title: titles aren't unique in an organisation.
+- **Find the board.** It is the open project linked to this repository. The board is
+  linked when the **link check** below says so, never on your word: issues and PRs go on a
+  project whether or not it is linked (`item-add` on an unlinked project exited 0 and left
+  it unlinked, measured 2026-11-18), so a missed link fails silently.
+  1. **Linked ones.** Run the link check's query and take its nodes with `closed: false`. A
+     closed project stays linked and stays in the list (measured), so it never counts. With
+     one, that is the board. With more than one, report BLOCKED with their numbers and
+     titles. With none, go on.
+  2. **An orphan.** A project you created whose link never landed (the session stopped
+     between the two calls) is the one to link, not a reason for a second project. List the
+     owner's projects:
+     `gh api graphql -f query='query { repositoryOwner(login: "<o>") { ... on ProjectV2Owner { projectsV2(first: 100) { totalCount nodes { number title closed shortDescription repositories(first: 1) { totalCount } } } } } }'`
+     (one query for an organisation or a user). Of the open ones linked to no repository
+     (`repositories.totalCount` 0, measured after an unlink): exactly one whose
+     `shortDescription` is `Board for <o>/<r>` is yours, so link it and run the link check.
+     With none stamped, any titled exactly `<r>` may be an orphan from before the stamp,
+     or the owner's: report BLOCKED with their numbers, and the main session sends
+     the job again with `project: <number>` or `project: new`. Two or more stamped ones are
+     BLOCKED the same way; name them all, since the owner may close the ones not chosen. A
+     title alone never adopts a project: titles aren't unique. The owner retires a board by
+     closing it or clearing its description; one only unlinked would be linked again here.
+  3. **Create.** `gh project create --owner <o> --title '<r>' --format json`, then stamp it
+     at once, `gh project edit <number> --owner <o> --description 'Board for <o>/<r>' --format json`,
+     then `gh project link <number> --owner <o> --repo <o>/<r>`, then the link check.
+     Report the new number even if a later step fails.
+
+  With `project: <number>` (a number under `<o>`: a user's project #3 and an
+  organisation's #3 are different boards), skip the search: that project is the board. Read
+  it first, since the link check lists only linked projects:
+  `gh api graphql -f query='query { repositoryOwner(login: "<o>") { ... on ProjectV2Owner { projectV2(number: <number>) { number closed } } } }'`.
+  `closed: true`, or a `NOT_FOUND` error (no such number under `<o>`), is BLOCKED with its
+  number (both measured). Then run the link check; if the number isn't in it, link it and
+  run the link check again. If that leaves more than one open project linked, say so in the
+  report: the next effort's search will be BLOCKED until the owner unlinks the others. With
+  `project: new`, go straight to step 3. Any job with a board step takes the field.
+  `project: new` answers one BLOCKED job only: on every later board job, and after you are
+  respawned, the main session sends `project: <the number that job reported>`, never `new`
+  again. The choice lasts one effort; the owner makes it last by unlinking the others
+  (`gh project unlink <number> --owner <o> --repo <o>/<r>`).
+- **Paging.** GraphQL refuses `first` above 100 (`EXCESSIVE_PAGINATION`, measured). When a
+  query's `projectsV2` `totalCount` is above the `projectsV2` nodes printed (not the nested
+  `repositories` count, which prints no nodes), add `pageInfo { endCursor hasNextPage }`
+  beside those `nodes`, and run it again with `after: "<endCursor>"` beside `first` until
+  `hasNextPage` is false.
+- **The link check.**
+  `gh api graphql -f query='query { repository(owner: "<o>", name: "<r>") { projectsV2(first: 100) { totalCount nodes { number title url closed id } } } }'`
+  After a link, the board's number must be in it with `closed: false`; otherwise report
+  BLOCKED with what the link and the query printed. `gh project link` prints nothing on
+  success when its output isn't a terminal, and linking an already-linked project exits 0
+  the same way (both measured), so its silence proves nothing: only this query does.
+- **`<o>` is a login, never `@me`.** `gh project link` fails with `--owner @me`: with
+  `--repo <o>/<r>` it says "has different owner from '@me'", and with a bare `--repo <r>` it
+  looks for `@me/<r>` (both measured). With the login, a
+  user-owned project linked to a user-owned repository and read back (measured). Create the
+  board under the repository's owner, `<o>`, whatever account you are logged in as.
 - **Its ids, once per session.** `gh project field-list <number> --owner <o> --format json`
   gives the Status field (the entry of `.fields` named `Status`), its `id`, and each option's
   `name` and `id` under its `.options`. Keep them, and the project's own `id`, for the rest
@@ -253,7 +299,8 @@ guard refuses `$(...)`, so a lookup and its use are two calls.
 - **A label that doesn't exist yet.** `gh label create <name>` first: `effort`,
   `workstream`, and the two `blocked-on-` labels.
 
-A token without the `project` scope fails the first of these. That is BLOCKED, with
+A token without the `project` scope fails somewhere in the board steps; which command fails
+first was not measured (only a token with `project` was tried). That is BLOCKED, with
 `gh auth refresh -s project`, which only the owner can run. Draft items are never used: a
 draft can't carry a label, a parent or a `Fixes`, and `gh issue list` doesn't show it.
 
@@ -261,9 +308,16 @@ These commands were run once, in order, against a throwaway project in an organi
 gh 2.89 (2026-11-10), and the guard accepted each as written. Not run then: taking an issue
 out from under its parent, moving one with `replace_parent`, closing an issue as not
 planned (and whether the board then shows it Done), adding an item that is already on the
-board, a pull request as an item, a repository owned by a user rather than an organisation,
-an organisation that forbids its members to create projects, and a `Fixes` closing the
-effort issue at a merge. The first time one of those happens, report what GitHub printed.
+board, a pull request as an item, the rest of the flow (`item-add`, sub-issues, Status)
+on a repository owned by a user, an organisation that forbids its members to create
+projects, and a `Fixes` closing the effort issue at a merge. The first time one of those
+happens, report what GitHub printed. The owner query and its unlinked filter, the stamp,
+link, re-link, unlink, the link check, the single-project lookup (open, closed and
+`NOT_FOUND`), the paging limit, a second page of the owner query and the `@me` failures were
+run on 2026-11-18 (gh 2.89) against throwaway projects in an
+organisation and under a user, linked to an organisation repository and a user-owned one,
+and replayed through the guard as the git manager. Not run: adopting a stamped orphan end to end, `project: new`, and a
+second page of the link check.
 
 What the board doesn't do:
 

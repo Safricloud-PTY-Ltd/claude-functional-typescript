@@ -231,8 +231,15 @@ the repo. Its file's **The board** has the objects and the commands. You tell it
   and `EDIT-PR` report the issues the PR will close: check them against the effort issue
   and the adopted tasks each time, since you may not be the one who merges.
 - **When a board job is BLOCKED on more than one linked project**: ask the owner which, and
-  send it again with `project: <number>`. Repeat that field on every board job if the git
-  manager is respawned.
+  send it again with `project: <number>`. **When it is BLOCKED on a possible orphan** (an
+  open, unlinked project titled after the repo, or several stamped as its board): ask the
+  owner whether to adopt one, which the git manager then links, or start a new board, and
+  send it again with `project: <number>` or `project: new`. Repeat `project: <number>` on
+  every later board job, after a respawn too, with the number the job reported in place of
+  `new`.
+  Check that the first board job reports `linked: yes (read back #<number>)`: an unlinked
+  project still takes issues, so nothing else shows a missed link. If it is missing, send
+  `QUERY` for the link check before any other board job.
 - **At `MERGE`**: send `effort: <n>` and `adopted:` with every task still adopted (every one
   `TRACK` reported, less any detached with the owner's yes). You keep those numbers; the git
   manager may have been respawned since `TRACK`. It checks before merging that the PR will
