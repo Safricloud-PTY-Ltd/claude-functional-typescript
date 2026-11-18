@@ -234,8 +234,9 @@ the repo. Its file's **The board** has the objects and the commands. You tell it
   send it again with `project: <number>`. **When it is BLOCKED on a possible orphan** (an
   open, unlinked project titled after the repo, or several stamped as its board): ask the
   owner whether to adopt one, which the git manager then links, or start a new board, and
-  send it again with `project: <number>` or `project: new`. Repeat the field on every board
-  job if the git manager is respawned, with the number the job reported in place of `new`.
+  send it again with `project: <number>` or `project: new`. Repeat `project: <number>` on
+  every later board job, after a respawn too, with the number the job reported in place of
+  `new`.
   Check that the first board job reports `linked: yes (read back #<number>)`: an unlinked
   project still takes issues, so nothing else shows a missed link. If it is missing, send
   `QUERY` for the link check before any other board job.
