@@ -226,8 +226,8 @@ guard refuses `$(...)`, so a lookup and its use are two calls.
      (one query for an organisation or a user). Of the open ones linked to no repository
      (`repositories.totalCount` 0, measured after an unlink): exactly one whose
      `shortDescription` is `Board for <o>/<r>` is yours, so link it and run the link check.
-     Any titled exactly `<r>` without that description may be an orphan from before the
-     stamp, or the owner's: report BLOCKED with their numbers, and the main session sends
+     With none stamped, any titled exactly `<r>` may be an orphan from before the stamp,
+     or the owner's: report BLOCKED with their numbers, and the main session sends
      the job again with `project: <number>` or `project: new`. Two or more stamped ones are
      BLOCKED the same way; name them all, since the owner may close the ones not chosen. A
      title alone never adopts a project: titles aren't unique. The owner retires a board by
@@ -238,9 +238,12 @@ guard refuses `$(...)`, so a lookup and its use are two calls.
      Report the new number even if a later step fails.
 
   With `project: <number>` (a number under `<o>`: a user's project #3 and an
-  organisation's #3 are different boards), skip the search: that project is the board. If
-  it is closed, report BLOCKED with its number. If it isn't linked, link it and run the link
-  check. If that leaves more than one open project linked, say so in the report: the next
+  organisation's #3 are different boards), skip the search: that project is the board. Read
+  it first, since the link check lists only linked projects:
+  `gh api graphql -f query='query { repositoryOwner(login: "<o>") { ... on ProjectV2Owner { projectV2(number: <number>) { number closed } } } }'`.
+  `closed: true`, or a `NOT_FOUND` error (no such number under `<o>`), is BLOCKED with its
+  number (both measured). If it isn't linked, link it and run the link check. If that
+  leaves more than one open project linked, say so in the report: the next
   effort's search will be BLOCKED until the owner unlinks the others. With `project: new`,
   go straight to step 3. Any job with a board step takes the field. `project: new` answers
   one BLOCKED job only: on every later board job, and after you are respawned, the main
@@ -248,8 +251,9 @@ guard refuses `$(...)`, so a lookup and its use are two calls.
   lasts one effort; the owner makes it last by unlinking the others
   (`gh project unlink <number> --owner <o> --repo <o>/<r>`).
 - **Paging.** GraphQL refuses `first` above 100 (`EXCESSIVE_PAGINATION`, measured). When a
-  query's `totalCount` is above the nodes printed, add `pageInfo { endCursor hasNextPage }`
-  beside `nodes`, and run it again with `after: "<endCursor>"` beside `first` until
+  query's `projectsV2` `totalCount` is above the `projectsV2` nodes printed (not the nested
+  `repositories` count, which prints no nodes), add `pageInfo { endCursor hasNextPage }`
+  beside those `nodes`, and run it again with `after: "<endCursor>"` beside `first` until
   `hasNextPage` is false.
 - **The link check.**
   `gh api graphql -f query='query { repository(owner: "<o>", name: "<r>") { projectsV2(first: 100) { totalCount nodes { number title url closed id } } } }'`
@@ -308,8 +312,9 @@ board, a pull request as an item, the rest of the flow (`item-add`, sub-issues, 
 on a repository owned by a user, an organisation that forbids its members to create
 projects, and a `Fixes` closing the effort issue at a merge. The first time one of those
 happens, report what GitHub printed. The owner query and its unlinked filter, the stamp,
-link, re-link, unlink, the link check, the paging limit, a second page of the owner query
-and the `@me` failures were run on 2026-11-18 (gh 2.89) against throwaway projects in an
+link, re-link, unlink, the link check, the single-project lookup (open, closed and
+`NOT_FOUND`), the paging limit, a second page of the owner query and the `@me` failures were
+run on 2026-11-18 (gh 2.89) against throwaway projects in an
 organisation and under a user, linked to an organisation repository and a user-owned one,
 and replayed through the guard as the git manager. Not run: adopting a stamped orphan end to end, `project: new`, and a
 second page of the link check.
