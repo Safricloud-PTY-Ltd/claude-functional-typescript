@@ -242,10 +242,10 @@ guard refuses `$(...)`, so a lookup and its use are two calls.
   it first, since the link check lists only linked projects:
   `gh api graphql -f query='query { repositoryOwner(login: "<o>") { ... on ProjectV2Owner { projectV2(number: <number>) { number closed } } } }'`.
   `closed: true`, or a `NOT_FOUND` error (no such number under `<o>`), is BLOCKED with its
-  number (both measured). If it isn't linked, link it and run the link check. If that
-  leaves more than one open project linked, say so in the report: the next
-  effort's search will be BLOCKED until the owner unlinks the others. With `project: new`,
-  go straight to step 3. Any job with a board step takes the field. `project: new` answers
+  number (both measured). Then run the link check; if the number isn't in it, link it and
+  run the link check again. If that leaves more than one open project linked, say so in the
+  report: the next effort's search will be BLOCKED until the owner unlinks the others. With
+  `project: new`, go straight to step 3. Any job with a board step takes the field. `project: new` answers
   one BLOCKED job only: on every later board job, and after you are respawned, the main
   session sends `project: <the number that job reported>`, never `new` again. The choice
   lasts one effort; the owner makes it last by unlinking the others
